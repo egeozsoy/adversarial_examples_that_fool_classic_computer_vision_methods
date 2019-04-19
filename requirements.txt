@@ -6,3 +6,5 @@ tensorflow
 scikit-learn
 Pillow
 randomgen
+torch
+torchvision
