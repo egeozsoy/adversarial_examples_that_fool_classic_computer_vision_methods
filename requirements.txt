@@ -1,0 +1,8 @@
+foolbox
+numpy
+keras
+matplotlib
+tensorflow
+scikit-learn
+Pillow
+randomgen
