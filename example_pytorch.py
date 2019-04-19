@@ -55,7 +55,7 @@ else:
     print('Training model')
     # set model for training
     model.train()
-    for epoch in range(50):
+    for epoch in range(10):
         t_loss = 0.0
         total_images = 0.0
         total_correct = 0.0
