@@ -45,7 +45,7 @@ for param in model.parameters():
 # change the classifier, map the internal values to 10 output classes
 model.fc = nn.Linear(512, 10)
 
-# Find total parameters and trainable parameters(most paramaters are not trainable, which speed up training a lot
+# Find total parameters and trainable parameters(most paramaters are not trainable, which speed up training a lot)
 total_params = sum(p.numel() for p in model.parameters())
 print(f'{total_params:,} total parameters.')
 total_trainable_params = sum(
@@ -143,7 +143,7 @@ model.eval()
 # select an image to generate adversarial examples
 image = np.float32(X_train[0:1])
 # get the prediction of the model to that image as integer
-label = int(np.argmax(model(torch.from_numpy(image).float()).detach().numpy()))
+label = int(np.argmax(model(torch.from_numpy(transform(image)).float()).detach().numpy()))
 
 adversarial = None
 # stop if unsuccessful after #timeout trials
@@ -155,8 +155,8 @@ while adversarial is None and timeout >= 0:
     adversarial = attack(image[0], label, verbose=True, iterations=100)
     timeout -= 1
 
-print('Original image predicted as {}'.format(np.argmax(model(torch.from_numpy(image).float()).detach().numpy())))
-print('Adversarial image predicted as {}'.format(np.argmax(model(torch.from_numpy(np.array([adversarial])).float()).detach().numpy())))
+print('Original image predicted as {}'.format(np.argmax(model(torch.from_numpy(transform(image)).float()).detach().numpy())))
+print('Adversarial image predicted as {}'.format(np.argmax(model(torch.from_numpy(transform(np.array([adversarial]))).float()).detach().numpy())))
 
 # before plotting, we need to change the the image shape and also reverse normalization.
 plot_result(np.transpose(image, (0, 2, 3, 1)), np.transpose(adversarial, (1, 2, 0)))
