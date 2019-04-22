@@ -5,9 +5,8 @@ import torch
 import torch.nn as nn
 from torch.utils.data import TensorDataset, DataLoader
 from torch import optim
-from torchvision.models import vgg16
+from torchvision.models import resnet18
 from torchvision.transforms import transforms
-import torchvision
 import foolbox
 from foolbox.models import PyTorchModel
 from foolbox.criteria import TargetClass
@@ -37,17 +36,14 @@ class CustomTensorDataset(TensorDataset):
 
 '''Reference blog post https://towardsdatascience.com/transfer-learning-with-convolutional-neural-networks-in-pytorch-dd09190245ce'''
 # pick a trained model from pytorch
-model = vgg16(pretrained=True)
+model = resnet18(pretrained=True)
 
-# Freeze model weights
+# We can choose to freeze model weights, by setting required grad to False
 for param in model.parameters():
-    param.requires_grad = False
+    param.requires_grad = True
 
-# change the classifier, map the internal 4096 values to 10 output classes, add batchnorm
-model.classifier[3] = nn.BatchNorm1d(4096)
-model.classifier[4] = nn.Linear(4096, 4096)
-model.classifier[5] = nn.ReLU(True)
-model.classifier[6] = nn.Sequential(nn.Dropout(),nn.BatchNorm1d(4096), nn.Linear(4096, 10))
+# change the classifier, map the internal values to 10 output classes
+model.fc = nn.Linear(512, 10)
 
 # Find total parameters and trainable parameters(most paramaters are not trainable, which speed up training a lot
 total_params = sum(p.numel() for p in model.parameters())
@@ -58,45 +54,51 @@ print(f'{total_trainable_params:,} training parameters.')
 
 # Loss and optimizer
 criteration = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.00001)
+optimizer = optim.Adadelta(model.parameters(), lr=0.001)
 # dynamically reduce lr if loss not improving
-scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5000, verbose=True)
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=2000, verbose=True)
 
+#size limit
+sl = 50000
 # train the model
 data = get_data()
 test_data = get_test_data()
-X_train = data[b'data']
-X_test = test_data[b'data']
+X_train = data[b'data'][:sl]
+X_test = test_data[b'data'][:sl]
 # transpose for pytorch
 X_train = np.transpose(X_train, (0, 3, 1, 2))
 X_test = np.transpose(X_test, (0, 3, 1, 2))
-y_train = data[b'labels']
-y_test = test_data[b'labels']
+y_train = data[b'labels'][:sl]
+y_test = test_data[b'labels'][:sl]
 
-# normalize data(this is a very important step, which increases accuracy a lot)
-# https://github.com/facebook/fb.resnet.torch/issues/180
-normalize = torchvision.transforms.Normalize(mean=[0.4913997551666284, 0.48215855929893703, 0.4465309133731618],
-                                             std=[0.24703225141799082, 0.24348516474564, 0.26158783926049628])
+# normalize data(this is a very important step, which increases accuracy a lot), also according to pytorch docu, image size needs to be at least 224
+# https://pytorch.org/docs/stable/torchvision/models.html
+normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                 std=[0.229, 0.224, 0.225])
 transform = transforms.Compose([
     transforms.ToPILImage(),
+    transforms.Resize(224),
     transforms.ToTensor(),
     normalize
 ])
 # create data and dataloder
 data = CustomTensorDataset(torch.from_numpy(X_train).float(), torch.from_numpy(y_train).long(), transform=transform)
 test_data = CustomTensorDataset(torch.from_numpy(X_test).float(), torch.from_numpy(y_test).long(), transform=transform)
-dataloader = DataLoader(data, batch_size=32, shuffle=True)
-test_dataloader = DataLoader(test_data, batch_size=32, shuffle=True)
+dataloader = DataLoader(data, batch_size=64, shuffle=True)
+test_dataloader = DataLoader(test_data, batch_size=64, shuffle=True)
 
-if os.path.exists('model.pt'):
+reuse = True
+
+if os.path.exists('model.pt') and reuse:
     print('Loading model')
     model = torch.load('model.pt')
 
 else:
     print('Training model')
+    # this achieves 84 accuracy just after 3 epochs, on a cpu, it takes about 3 hours per epoch
     # set model for training
     model.train()
-    for epoch in range(100):
+    for epoch in range(30):
         t_loss = 0.0
         total_train_images = 0.0
         total_train_correct = 0.0
@@ -131,11 +133,9 @@ else:
             total_test_images += data.shape[0]
 
         model.train()
-
+        torch.save(model, 'model.pt')
         print(
-            f'Training Loss: {t_loss}, Training Accuracy: {total_train_correct / total_train_images}, Test Accuracy: {total_test_correct / total_test_images}')
-
-    torch.save(model, 'model.pt')
+            f'{epoch} - Training Loss: {t_loss}, Training Accuracy: {total_train_correct / total_train_images}, Test Accuracy: {total_test_correct / total_test_images}')
 
 # set model for evaluation(changes batch layers etc.)
 model.eval()
@@ -152,12 +152,11 @@ while adversarial is None and timeout >= 0:
     fmodel = PyTorchModel(model, bounds=(0, 255), num_classes=10)
     attack = foolbox.attacks.BoundaryAttack(model=fmodel, criterion=TargetClass(1))
     # multiply the image with 255, to reverse the normalization before the activations
-    adversarial = attack(image[0] * 255, label, verbose=True, iterations=100)
-
+    adversarial = attack(image[0], label, verbose=True, iterations=100)
     timeout -= 1
 
 print('Original image predicted as {}'.format(np.argmax(model(torch.from_numpy(image).float()).detach().numpy())))
 print('Adversarial image predicted as {}'.format(np.argmax(model(torch.from_numpy(np.array([adversarial])).float()).detach().numpy())))
 
 # before plotting, we need to change the the image shape and also reverse normalization.
-plot_result(np.transpose(image, (0, 2, 3, 1)) * 255, np.transpose(adversarial, (1, 2, 0)))
+plot_result(np.transpose(image, (0, 2, 3, 1)), np.transpose(adversarial, (1, 2, 0)))
