@@ -35,6 +35,8 @@ class CustomTensorDataset(TensorDataset):
 
 
 '''Reference blog post https://towardsdatascience.com/transfer-learning-with-convolutional-neural-networks-in-pytorch-dd09190245ce'''
+use_gpu = torch.cuda.is_available()
+
 # pick a trained model from pytorch
 model = resnet18(pretrained=True)
 
@@ -44,6 +46,9 @@ for param in model.parameters():
 
 # change the classifier, map the internal values to 10 output classes
 model.fc = nn.Linear(512, 10)
+
+if use_gpu:
+    model.cuda()
 
 # Find total parameters and trainable parameters(most paramaters are not trainable, which speed up training a lot)
 total_params = sum(p.numel() for p in model.parameters())
@@ -84,10 +89,10 @@ transform = transforms.Compose([
 # create data and dataloder
 data = CustomTensorDataset(torch.from_numpy(X_train).float(), torch.from_numpy(y_train).long(), transform=transform)
 test_data = CustomTensorDataset(torch.from_numpy(X_test).float(), torch.from_numpy(y_test).long(), transform=transform)
-dataloader = DataLoader(data, batch_size=64, shuffle=True)
-test_dataloader = DataLoader(test_data, batch_size=64, shuffle=True)
+dataloader = DataLoader(data, batch_size=64, shuffle=True,pin_memory=True)
+test_dataloader = DataLoader(test_data, batch_size=64, shuffle=True,pin_memory=True)
 
-reuse = True
+reuse = False
 
 if os.path.exists('model.pt') and reuse:
     print('Loading model')
@@ -98,7 +103,7 @@ else:
     # this achieves 84 accuracy just after 3 epochs, on a cpu, it takes about 3 hours per epoch
     # set model for training
     model.train()
-    for epoch in range(30):
+    for epoch in range(10):
         t_loss = 0.0
         total_train_images = 0.0
         total_train_correct = 0.0
@@ -106,6 +111,10 @@ else:
         total_test_correct = 0.0
 
         for data, targets in dataloader:
+            if use_gpu:
+                data = data.cuda()
+                targets = targets.cuda()
+
             # Generate predictions
             out = model(data)
             # Calculate loss
@@ -125,6 +134,10 @@ else:
         # eval using test set
         model.eval()
         for data, targets in test_dataloader:
+            if use_gpu:
+                data = data.cuda()
+                targets = targets.cuda()
+
             # Generate predictions
             out = model(data)
             labels = torch.argmax(targets, dim=1)
