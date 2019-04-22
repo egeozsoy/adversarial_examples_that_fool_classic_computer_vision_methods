@@ -92,7 +92,7 @@ test_data = CustomTensorDataset(torch.from_numpy(X_test).float(), torch.from_num
 dataloader = DataLoader(data, batch_size=64, shuffle=True,pin_memory=True)
 test_dataloader = DataLoader(test_data, batch_size=64, shuffle=True,pin_memory=True)
 
-reuse = False
+reuse = True
 
 if os.path.exists('model.pt') and reuse:
     print('Loading model')
@@ -152,6 +152,9 @@ else:
 
 # set model for evaluation(changes batch layers etc.)
 model.eval()
+
+
+#TODO make sure to feed the model with a normalized image, also change bounds, revert the normalization for plotting
 
 # select an image to generate adversarial examples
 image = np.float32(X_train[0:1])
