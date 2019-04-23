@@ -32,11 +32,6 @@ def get_data():
     data[b'labels'] = X
     return data
 
-    # image = data[b'data'][2]
-    # image = np.transpose(image, (1,2,0))
-    # plt.imshow(image)
-    # plt.show()
-
 def get_test_data():
     data = unpickle(test_file)
     data[b'data'] = np.transpose(data[b'data'].reshape(10000, 3, 32, 32), (0,2,3,1))
@@ -46,8 +41,3 @@ def get_test_data():
     X = enc.transform(X).toarray()
     data[b'labels'] = X
     return data
-
-    # image = data[b'data'][2]
-    # image = np.transpose(image, (1,2,0))
-    # plt.imshow(image)
-    # plt.show()

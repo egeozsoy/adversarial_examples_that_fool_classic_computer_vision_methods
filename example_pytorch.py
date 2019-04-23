@@ -12,7 +12,8 @@ from foolbox.models import PyTorchModel
 from foolbox.criteria import TargetClass
 
 from load_cifar10_data import get_data, get_test_data
-from utils import plot_result
+from utils import plot_result, revert_normalization
+import matplotlib.pyplot as plt
 
 
 class CustomTensorDataset(TensorDataset):
@@ -63,7 +64,7 @@ optimizer = optim.Adadelta(model.parameters(), lr=0.001)
 # dynamically reduce lr if loss not improving
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=2000, verbose=True)
 
-#size limit
+# size limit
 sl = 50000
 # train the model
 data = get_data()
@@ -78,8 +79,8 @@ y_test = test_data[b'labels'][:sl]
 
 # normalize data(this is a very important step, which increases accuracy a lot), also according to pytorch docu, image size needs to be at least 224
 # https://pytorch.org/docs/stable/torchvision/models.html
-normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                 std=[0.229, 0.224, 0.225])
+normalize = transforms.Normalize(mean=[0.45, 0.45, 0.45],
+                                 std=[0.226, 0.226, 0.226])
 transform = transforms.Compose([
     transforms.ToPILImage(),
     transforms.Resize(224),
@@ -89,14 +90,14 @@ transform = transforms.Compose([
 # create data and dataloder
 data = CustomTensorDataset(torch.from_numpy(X_train).float(), torch.from_numpy(y_train).long(), transform=transform)
 test_data = CustomTensorDataset(torch.from_numpy(X_test).float(), torch.from_numpy(y_test).long(), transform=transform)
-dataloader = DataLoader(data, batch_size=64, shuffle=True,pin_memory=True)
-test_dataloader = DataLoader(test_data, batch_size=64, shuffle=True,pin_memory=True)
+dataloader = DataLoader(data, batch_size=64, shuffle=True, pin_memory=True)
+test_dataloader = DataLoader(test_data, batch_size=64, shuffle=True, pin_memory=True)
 
 reuse = True
 
 if os.path.exists('model.pt') and reuse:
     print('Loading model')
-    model = torch.load('model.pt')
+    model = torch.load('model.pt',map_location=lambda storage, loc: storage)
 
 else:
     print('Training model')
@@ -153,26 +154,44 @@ else:
 # set model for evaluation(changes batch layers etc.)
 model.eval()
 
-
-#TODO make sure to feed the model with a normalized image, also change bounds, revert the normalization for plotting
+# TODO fix colors
 
 # select an image to generate adversarial examples
-image = np.float32(X_train[0:1])
+image,g_label = next(iter(dataloader))
+image = image[10]
+g_label = g_label[10]
+test = image.numpy()
+test = np.transpose(test,(1,2,0))
+plt.imshow(test)
+plt.savefig('plot.png')
+
+if use_gpu:
+    image = image.cuda()
 # get the prediction of the model to that image as integer
-label = int(np.argmax(model(torch.from_numpy(transform(image)).float()).detach().numpy()))
+label = int(np.argmax(model(image).cpu().detach().numpy()))
+image_cpu = image.cpu().detach().numpy()
 
 adversarial = None
 # stop if unsuccessful after #timeout trials
 timeout = 5
 while adversarial is None and timeout >= 0:
-    fmodel = PyTorchModel(model, bounds=(0, 255), num_classes=10)
-    attack = foolbox.attacks.BoundaryAttack(model=fmodel, criterion=TargetClass(1))
+    fmodel = PyTorchModel(model, bounds=(-2, 2.4), num_classes=10)
+    attack = foolbox.attacks.FGSM(model=fmodel)
     # multiply the image with 255, to reverse the normalization before the activations
-    adversarial = attack(image[0], label, verbose=True, iterations=100)
+    adversarial = attack(image_cpu[0], label)
     timeout -= 1
 
-print('Original image predicted as {}'.format(np.argmax(model(torch.from_numpy(transform(image)).float()).detach().numpy())))
-print('Adversarial image predicted as {}'.format(np.argmax(model(torch.from_numpy(transform(np.array([adversarial]))).float()).detach().numpy())))
+adversarial = torch.from_numpy(np.array([adversarial])).float()
+adversarial = transform(adversarial[0]).unsqueeze(dim=0)
+if use_gpu:
+    adversarial = adversarial.cuda()
+
+adversarial_cpu = adversarial.cpu().detach().numpy()
+
+print('Original image predicted as {}'.format(np.argmax(model(image).cpu().detach().numpy())))
+print('Adversarial image predicted as {}'.format(np.argmax(model(adversarial).cpu().detach().numpy())))
 
 # before plotting, we need to change the the image shape and also reverse normalization.
-plot_result(np.transpose(image, (0, 2, 3, 1)), np.transpose(adversarial, (1, 2, 0)))
+revert_normalization(image_cpu[0], means=[0.45, 0.45, 0.45], stds=[0.226, 0.226, 0.226])
+revert_normalization(adversarial_cpu[0], means=[0.45, 0.45, 0.45], stds=[0.226, 0.226, 0.226])
+plot_result(np.transpose(image_cpu, (0, 2, 3, 1)), np.transpose(adversarial_cpu, (0, 2, 3, 1)))
