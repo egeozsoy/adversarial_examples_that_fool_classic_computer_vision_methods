@@ -1,3 +1,5 @@
 cifar-10-batches-py/*
 .idea/*
 model.pt
+datasets/*
+voc_*
