@@ -1,19 +1,15 @@
-from foolbox.models import Model
-import foolbox
+import os
+import numpy as np
+import cv2
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import LinearSVC
 from sklearn.linear_model import LogisticRegression
-from sklearn.datasets import fetch_openml
-
 from sklearn.model_selection import train_test_split
+import foolbox
+from foolbox.models import Model
 from loader import load_data
-import numpy as np
 from utils import plot_result
-import cv2
-import os
 
-
-# TODO easier cifar 10 with only 4 classes
 
 class FoolboxSklearnWrapper(Model):
 
@@ -61,27 +57,28 @@ def dummy_feature_extractor(images):
 
 
 # output sift descriptors
-def extract_sift_features(image):
-    grayscale = cv2.cvtColor(np.uint8(image), cv2.COLOR_RGB2GRAY)
-    grayscale = np.uint8(image)
+def extract_sift_features(image: np.uint8):
+    # some images are already black and white, only convert if not black and white
+    grayscale = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY) if len(image.shape) == 3 else image
     kp, desc = sift.detectAndCompute(grayscale, None)
     return kp, desc
 
 
+def bovw_extractor_helper(image: np.uint8):
+    grayscale = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY) if len(image.shape) == 3 else image
+    siftkp = sift.detect(grayscale)
+    bov = bow_extract.compute(grayscale, siftkp)
+    if bov is None:
+        # set bov to zero if no sift features were found
+        bov = np.zeros((1, vocab_size))
+
+    return bov
+
+
 def bovw_extractor(images):
-    bovws = None
-    for image in images:
-        grayscale = cv2.cvtColor(np.uint8(image), cv2.COLOR_RGB2GRAY)
-        grayscale = np.uint8(image)
-        siftkp = sift.detect(grayscale)
-        bov = bow_extract.compute(grayscale, siftkp)
-        if bov is None:
-            # set bov to zero if no sift features were found
-            bov = np.zeros((1, vocab_size))
-        if bovws is None:
-            bovws = bov
-        else:
-            bovws = np.concatenate([bovws, bov])
+    bovws = [bovw_extractor_helper(image) for image in images]
+    bovws = np.array(bovws)
+    bovws = bovws.reshape(bovws.shape[0], bovws.shape[2])
 
     return bovws
 
@@ -92,23 +89,45 @@ def filter_classes(X, y, keep_classes):
     for keep_class in keep_classes[1:]:
         logic_result = np.logical_or(logic_result, y == keep_class)
 
-    # X = X[logic_result, :, :, :]
-    X = X[logic_result, :, :]
+    X = X[logic_result]
     y = y[logic_result]
 
     return X, y
 
 
+from skimage.feature import hog
+from skimage import exposure
+
+
+def hog_visualizer(image):
+    _, hog_img = hog(image, visualize=True, pixels_per_cell=(8, 8))
+    hog_img = exposure.rescale_intensity(hog_img, in_range=(0, 10)) * 255
+    cv2.imshow('hog_features', np.uint8(hog_img))
+    cv2.waitKey(0)
+
+
+def hog_extractor(images):
+    hogs = [hog(image) for image in images]
+    hogs = np.array(hogs)
+    return hogs
+
+
 if __name__ == '__main__':
     # Hyperparams
     vocab_size = 1000
-    data_size = 2000
-    feature_extractor = bovw_extractor
+    data_size = 10000
+    feature_extractor = hog_extractor
     visualize_sift = False
+    visualize_hog = False
     image_size = 32 * 5
-    use_classes = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    use_classes = [0, 1]
     n_features = 0  # means sift chooses
-    dataset_name = 'imagenette'
+    dataset_name = 'inria'
+    vocs_folder = 'vocs'
+    model_name = 'svc'
+
+    if not os.path.exists(vocs_folder):
+        os.mkdir(vocs_folder)
 
     iter_name = 'iter_dtn_{}_vs{}_ds{}_is{}_cc{}_nf{}_fe_{}'.format(dataset_name, vocab_size, data_size, image_size, len(use_classes), n_features,
                                                                     feature_extractor.__name__)
@@ -121,7 +140,7 @@ if __name__ == '__main__':
     print('Loading Data')
     X, y = load_data(image_size, dataset_name=dataset_name)
 
-    # X, y = filter_classes(X,y,keep_classes=use_classes)
+    X, y = filter_classes(X, y, keep_classes=use_classes)
 
     # we might want to resize images
     if image_size != X.shape[1]:
@@ -132,7 +151,7 @@ if __name__ == '__main__':
 
         X = np.array(X_resized)
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True, random_state=0)
 
     X_train = X_train[:data_size]
     X_test = X_test[:data_size]
@@ -148,13 +167,19 @@ if __name__ == '__main__':
             show_imagenette_image(X_train[a])
             visualize_sift_points(X_train[a])
 
-    if feature_extractor == bovw_extractor:
+    if visualize_hog:
+        for a in range(0, 100):
+            print(y_train[a:a + 1])
+            show_imagenette_image(X_train[a])
+            hog_visualizer(X_train[a])
+
+    if feature_extractor == bovw_extractor and model_name != 'cnn':
 
         matcher = cv2.FlannBasedMatcher(dict(algorithm=1, trees=5), {})
         ## 1. setup BOW
         bow_extract = cv2.BOWImgDescriptorExtractor(sift, matcher)
 
-        if not os.path.exists('voc_{}.npy'.format(iter_name)):
+        if not os.path.exists(os.path.join(vocs_folder, 'voc_{}.npy'.format(iter_name))):
             bow_train = cv2.BOWKMeansTrainer(vocab_size)  # toy world, you want more.
             # 2. Fill bow
             print('Calculating Vocabulary for training images')
@@ -171,26 +196,46 @@ if __name__ == '__main__':
             print('Generating vocabulary by clustering')
 
             voc = bow_train.cluster()
-            np.save('voc_{}.npy'.format(iter_name), voc)
+            np.save(os.path.join(vocs_folder, 'voc_{}.npy'.format(iter_name)), voc)
 
         else:
             print('Loaded Vocabulary')
-            voc = np.load('voc_{}.npy'.format(iter_name))
+            voc = np.load(os.path.join(vocs_folder, 'voc_{}.npy'.format(iter_name)))
 
         bow_extract.setVocabulary(voc)
 
-    # model = RandomForestClassifier(n_estimators=100)
-    model = LinearSVC()
-    # model = LogisticRegression()
+    if model_name == 'cnn':
+        from keras_train_helpers import get_keras_scikitlearn_model, get_keras_features_labels
 
-    print('Starting model training')
-    model.fit(feature_extractor(X_train), y_train)
-    print('Training set performance {}'.format(model.score(feature_extractor(X_train), y_train)))
-    print('Testing set performance {}'.format(model.score(feature_extractor(X_test), y_test)))
+        model = get_keras_scikitlearn_model(X_train.shape, len(use_classes))
 
-    print('Sample predictions from training {}'.format(model.predict(feature_extractor(X_train[:10]))))
+        X_train_extracted, X_test_extracted, y_train, y_test = get_keras_features_labels(X_train, X_test, y_train, y_test, len(use_classes))
+        print('Starting training {}'.format(model_name))
+        model.fit(X_train_extracted, y_train, validation_data=(X_test_extracted, y_test))
+
+    else:
+        print('Starting feature extraction')
+        if model_name == 'svc':
+            model = LinearSVC()
+        elif model_name == 'forest':
+            model = RandomForestClassifier(n_estimators=100, n_jobs=-1)
+        elif model_name == 'logreg':
+            model = LogisticRegression()
+        else:
+            model = LinearSVC()
+
+        X_train_extracted = feature_extractor(X_train)
+        X_test_extracted = feature_extractor(X_test)
+
+        print('Starting training {}'.format(model_name))
+        model.fit(X_train_extracted, y_train)
+
+    print('Training set performance {}'.format(model.score(X_train_extracted, y_train)))
+    print('Testing set performance {}'.format(model.score(X_test_extracted, y_test)))
+
+    print('Sample predictions from training {}'.format(model.predict(X_train_extracted[:10])))
     print('Ground truth for        training {}'.format(y_train[:10]))
-    print('Sample predictions from testing {}'.format(model.predict(feature_extractor(X_test[:10]))))
+    print('Sample predictions from testing {}'.format(model.predict(X_test_extracted[:10])))
     print('Ground truth for        testing {}'.format(y_test[:10]))
 
     # adversarial = None
