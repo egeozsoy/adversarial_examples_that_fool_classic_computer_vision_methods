@@ -36,7 +36,7 @@ def bovw_extractor_helper(image: np.uint8):
 
 
 def bovw_extractor(images):
-    bovws = [bovw_extractor_helper(image) for image in images]
+    bovws = [bovw_extractor_helper(image) for image in np.uint8(images)]
     bovws = np.array(bovws)
     bovws = bovws.reshape(bovws.shape[0], bovws.shape[2])
 

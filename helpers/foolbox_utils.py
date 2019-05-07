@@ -1,7 +1,7 @@
 import numpy as np
 from foolbox.models import Model
 
-from configurations import use_classes
+from configurations import use_classes, model_name
 
 
 class FoolboxSklearnWrapper(Model):
@@ -16,8 +16,11 @@ class FoolboxSklearnWrapper(Model):
         return self.num_classes
 
     def batch_predictions(self, images: np.array):
-        features = self.feature_extractor(images)
-        predictions = self.predictor.predict(features)
+        if model_name != 'cnn':
+            features = self.feature_extractor(images)
+            predictions = self.predictor.predict(features)
+        else:
+            predictions = self.predictor.predict(images)
         # convert the prediction to one hot
         one_hot_pred = np.zeros((images.shape[0], len(use_classes)))
         for idx, prediction in enumerate(predictions):

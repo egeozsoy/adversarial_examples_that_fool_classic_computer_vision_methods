@@ -2,9 +2,15 @@ import keras
 from keras import Sequential
 from keras.layers import Conv2D, Activation, MaxPooling2D, Dropout, Flatten, Dense
 from keras.wrappers.scikit_learn import KerasClassifier
+import tensorflow as tf
+from keras.backend.tensorflow_backend import set_session
 
 X_shape = None
 class_count = None
+
+config = tf.ConfigProto()
+config.gpu_options.per_process_gpu_memory_fraction = 0.8
+set_session(tf.Session(config=config))
 
 
 def make_model():
