@@ -15,19 +15,19 @@ def make_model():
     model.add(Conv2D(64, (3, 3)))
     model.add(Activation('relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Dropout(0.8))
+    model.add(Dropout(0.7))
 
     model.add(Conv2D(64, (3, 3), padding='same'))
     model.add(Activation('relu'))
     model.add(Conv2D(64, (3, 3)))
     model.add(Activation('relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Dropout(0.8))
+    model.add(Dropout(0.7))
 
     model.add(Flatten())
     model.add(Dense(1024))
     model.add(Activation('relu'))
-    model.add(Dropout(0.8))
+    model.add(Dropout(0.7))
     model.add(Dense(class_count))
     model.add(Activation('softmax'))
 
@@ -46,7 +46,7 @@ def get_keras_scikitlearn_model(X_train_shape, n_classes):
     global X_shape, class_count
     X_shape = X_train_shape
     class_count = n_classes
-    model = KerasClassifier(make_model, batch_size=64, epochs=20)
+    model = KerasClassifier(make_model, batch_size=64, epochs=40)
     return model
 
 
