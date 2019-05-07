@@ -1,4 +1,7 @@
+import cv2
+import numpy as np
 import matplotlib.pyplot as plt
+
 
 def plot_result(image, adversarial):
     plt.figure()
@@ -22,6 +25,18 @@ def plot_result(image, adversarial):
 
     plt.show()
 
-def revert_normalization(image,means,stds):
-    for idx,(mean,std) in enumerate(zip(means,stds)):
+
+def revert_normalization(image, means, stds):
+    for idx, (mean, std) in enumerate(zip(means, stds)):
         image[idx] = (image[idx] * std) + mean
+
+
+def show_image(image, label='image'):
+    cv2.imshow(label, np.uint8(image))
+    cv2.waitKey(0)
+
+
+# this requires extra color conversion
+def show_cifar_10_image(image, label='image'):
+    img = cv2.cvtColor(np.uint8(image), cv2.COLOR_RGB2BGR)
+    show_image(img, label)

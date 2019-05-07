@@ -1,6 +1,6 @@
 import os
-import cv2
 
+import cv2
 import numpy as np
 from sklearn.datasets import fetch_openml
 
@@ -165,64 +165,6 @@ def load_inria_dataset(image_size, get_test=False):
 
     return X, y
 
-
-# pascal challange
-# this should already resize while returning I think
-# def load_voc2007_data(image_size,get_test=False):
-#     voc2007 = os.path.join(datasets_root,'VOC2007')
-#     images_path = os.path.join(voc2007,'JPEGImages')
-#     labels_path = os.path.join(voc2007,'ImageSets/Main')
-#     train_file = os.path.join(labels_path,'train.txt')
-#     test_file = os.path.join(labels_path,'val.txt')
-#
-#     load_file = train_file if get_test == False else test_file
-#     lookfor_str = '_train.txt' if get_test == False else '_val.txt'
-#
-#     X = []
-#
-#     # we first have to load the image_names without labels
-#     with open(train_file) as f:
-#         lines = f.readlines()
-#         for name in lines:
-#             if name != '':
-#                 X.append(name.strip())
-#
-#     X = np.array(X)
-#     y = np.zeros((X.shape[0],)) - 1 #initilize labels with -1
-#
-#     class_index = 0
-#
-#     for label_file in sorted(os.listdir(labels_path)):
-#         if lookfor_str in label_file:
-#             label_file_path = os.path.join(labels_path,label_file)
-#             with open(label_file_path) as f:
-#                 lines = f.readlines()
-#                 labels = []
-#                 for line in lines:
-#                     line = line.strip()
-#                     label = line.split(' ')[-1]
-#                     labels.append(int(label))
-#
-#                 labels = np.array(labels)
-#                 # Mask and set those indices to class_index
-#                 mask = labels == 1
-#                 y[mask] = class_index
-#
-#
-#             class_index += 1
-#
-#     print(X)
-#     print(y)
-#
-#     print('Resizing images')
-#     X_resized = []
-#     for img_path in X:
-#         img = cv2.imread(os.path.join(images_path,img_path))
-#         X_resized.append(cv2.resize(img, (image_size, image_size // 1,333)))
-#
-#     X = np.array(X_resized)
-#
-#     return X,y
 
 def load_data(image_size, get_test=False, dataset_name='imagenette'):
     if dataset_name == 'mnist':
