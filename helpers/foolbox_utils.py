@@ -15,11 +15,13 @@ class FoolboxSklearnWrapper(Model):
     def num_classes(self):
         return self.num_classes
 
-    def batch_predictions(self, images):
+    def batch_predictions(self, images: np.array):
         features = self.feature_extractor(images)
-        predictions = int(self.predictor.predict(features))
+        predictions = self.predictor.predict(features)
         # convert the prediction to one hot
-        one_hot_pred = np.zeros(len(use_classes))
-        one_hot_pred[predictions] = 1
+        one_hot_pred = np.zeros((images.shape[0], len(use_classes)))
+        for idx, prediction in enumerate(predictions):
+            prediction = int(prediction)
+            one_hot_pred[idx][prediction] = 1
 
-        return np.array([one_hot_pred])
+        return one_hot_pred

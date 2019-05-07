@@ -12,7 +12,7 @@ import foolbox
 
 from configurations import vocab_size, data_size, image_size, use_classes, n_features, feature_extractor_name, visualize_hog, visualize_sift
 from helpers.utils import filter_classes
-from helpers.image_utils import show_image
+from helpers.image_utils import show_image, plot_result
 from helpers.feature_extractors import visualize_sift_points, hog_visualizer, get_feature_extractor, sift, extract_sift_features, bow_extract
 from helpers.foolbox_utils import FoolboxSklearnWrapper
 from helpers.dataset_loader import load_data
@@ -191,12 +191,13 @@ if __name__ == '__main__':
         fmodel = FoolboxSklearnWrapper(bounds=(0, 255), channel_axis=2, feature_extractor=feature_extractor, predictor=model)
         attack = foolbox.attacks.BoundaryAttack(model=fmodel)
         # multiply the image with 255, to reverse the normalization before the activations
-        adversarial = attack(deepcopy(test_image), label, verbose=True, iterations=100)
+        adversarial = attack(deepcopy(test_image), label, verbose=True, iterations=1000)
         timeout -= 1
 
     print('Original image predicted as {}'.format(label))
     adv_label = model.predict(feature_extractor(np.array([adversarial])))[0]
     print('Adverserial image predicted as {}'.format(adv_label))
     if adversarial is not None:
-        show_image(np.uint8(test_image), str(label))
-        show_image(np.uint8(adversarial), str(adv_label))
+        plot_result(np.float32(cv2.cvtColor(np.uint8(test_image), cv2.COLOR_RGB2BGR)), np.float32(cv2.cvtColor(np.uint8(adversarial), cv2.COLOR_RGB2BGR)))
+        # show_image(np.uint8(test_image), str(label))
+        # show_image(np.uint8(adversarial), str(adv_label))
