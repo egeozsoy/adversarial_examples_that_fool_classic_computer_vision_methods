@@ -10,11 +10,11 @@ from sklearn.model_selection import train_test_split
 from sklearn.externals import joblib
 import foolbox
 
-from configurations import vocab_size, data_size, image_size, use_classes, n_features, feature_extractor_name, visualize_hog, visualize_sift, model_name,dataset_name
+from configurations import vocab_size, data_size, image_size, use_classes, n_features, feature_extractor_name, visualize_hog, visualize_sift, model_name,dataset_name,attack_name
 from helpers.utils import filter_classes
 from helpers.image_utils import show_image, plot_result
 from helpers.feature_extractors import visualize_sift_points, hog_visualizer, get_feature_extractor, sift, extract_sift_features, bow_extract
-from helpers.foolbox_utils import FoolboxSklearnWrapper
+from helpers.foolbox_utils import FoolboxSklearnWrapper,find_closest_reference_image
 from helpers.dataset_loader import load_data
 
 if __name__ == '__main__':
@@ -170,7 +170,8 @@ if __name__ == '__main__':
 
     print('Sample predictions from training {}'.format(model.predict(X_train_extracted[:20])))
     print('Ground truth for        training {}'.format(y_train[:20]))
-    print('Sample predictions from testing {}'.format(model.predict(X_test_extracted[:20])))
+    predictions_from_testing = model.predict(X_test_extracted)
+    print('Sample predictions from testing {}'.format(predictions_from_testing[:20]))
     print('Ground truth for        testing {}'.format(y_test[:20]))
 
     # visualize some predictions
@@ -178,26 +179,37 @@ if __name__ == '__main__':
         label = str(model.predict(X_test_extracted[i:i + 1])[0])
         show_image(X_test[i], '{}-{}'.format(y_test[i], label))
 
-    test_idx = 4
+    test_idx = 1
     reference_idx = 0
 
     # starting adversarial
     test_image = np.float32(X_test[test_idx])
-    reference_image = np.float32(X_test[reference_idx])
 
     if model_name != 'cnn':
         label = y_test[test_idx]
     else:
         label = int(np.argmax(y_test[test_idx]))
 
+    reference_image:np.ndarray = np.float32(find_closest_reference_image(test_image,X_test,predictions_from_testing,label))
+
     adversarial = None
     # stop if unsuccessful after #timeout trials
     timeout = 5
+
     while adversarial is None and timeout >= 0:
         fmodel = FoolboxSklearnWrapper(bounds=(0, 255), channel_axis=2, feature_extractor=feature_extractor, predictor=model)
-        attack = foolbox.attacks.BoundaryAttack(model=fmodel)
+
+        if attack_name == 'BoundaryPlusPlus':
+            iter = 20
+            attack = foolbox.attacks.BoundaryAttackPlusPlus(model=fmodel)
+        elif attack_name == 'Boundary':
+            iter = 2000
+            attack = foolbox.attacks.BoundaryAttack(model=fmodel)
+        else:
+            raise Exception('ATTACK NOT KNOWN')
+
         # multiply the image with 255, to reverse the normalization before the activations
-        adversarial = attack(deepcopy(test_image), label, verbose=True, iterations=2000, starting_point=reference_image)
+        adversarial = attack(deepcopy(test_image), label, verbose=True, iterations=iter, starting_point=reference_image)
         timeout -= 1
 
     print('Original image predicted as {}'.format(label))

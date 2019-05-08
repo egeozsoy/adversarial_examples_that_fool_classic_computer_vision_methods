@@ -3,6 +3,7 @@ import numpy as np
 from foolbox.models import Model
 
 from configurations import use_classes, model_name
+from helpers.image_utils import show_image
 
 
 class FoolboxSklearnWrapper(Model):
@@ -30,3 +31,18 @@ class FoolboxSklearnWrapper(Model):
             one_hot_pred[idx][prediction] = 1
 
         return one_hot_pred
+
+
+def find_closest_reference_image(goal_img, reference_images, reference_labels, label):
+    # finds the closes reference img to images, that still belongs to other class
+    maskout_correct_labels = reference_labels != label
+    ref_images_masked = reference_images[maskout_correct_labels]
+    difference_metric = np.linalg.norm(np.reshape(ref_images_masked - goal_img, (ref_images_masked.shape[0], -1)), axis=1)
+    most_similar_image:np.ndarray = ref_images_masked[np.argmin(difference_metric)]
+
+    # most_different_image = ref_images_masked[np.argmax(difference_metric)]
+    # show_image(goal_img,'goal_img')
+    # show_image(most_different_image,'most_different')
+    # show_image(most_similar_image,'most_similar')
+
+    return most_similar_image
