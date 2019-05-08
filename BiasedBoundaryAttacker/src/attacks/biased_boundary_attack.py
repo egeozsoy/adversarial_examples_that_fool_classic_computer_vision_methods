@@ -5,9 +5,9 @@ from concurrent.futures import ThreadPoolExecutor
 
 from foolbox.models import TensorFlowModel
 
-import bench_settings
-from models.batch_tensorflow_model import BatchTensorflowModel
-from utils.util import sample_hypersphere
+from BiasedBoundaryAttacker.src import bench_settings
+from BiasedBoundaryAttacker.src.models.batch_tensorflow_model import BatchTensorflowModel
+from BiasedBoundaryAttacker.src.utils.util import sample_hypersphere
 
 
 class BiasedBoundaryAttack:

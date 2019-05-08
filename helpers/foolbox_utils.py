@@ -1,4 +1,5 @@
 import numpy as np
+
 from foolbox.models import Model
 
 from configurations import use_classes, model_name
@@ -15,12 +16,13 @@ class FoolboxSklearnWrapper(Model):
     def num_classes(self):
         return self.num_classes
 
-    def batch_predictions(self, images: np.array):
+    def batch_predictions(self, images: np.ndarray):
         if model_name != 'cnn':
             features = self.feature_extractor(images)
             predictions = self.predictor.predict(features)
         else:
-            predictions = self.predictor.predict(images)
+            from helpers.keras_train import dropout_images
+            predictions = self.predictor.predict(dropout_images(images))
         # convert the prediction to one hot
         one_hot_pred = np.zeros((images.shape[0], len(use_classes)))
         for idx, prediction in enumerate(predictions):

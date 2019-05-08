@@ -6,16 +6,16 @@ import numpy as np
 import tensorflow as tf
 from scipy.misc import imsave
 
-import bench_settings
-from attacks.biased_boundary_attack import BiasedBoundaryAttack
-from utils.distance_measures import DistL2
-from models.blackbox_wrapper import BlackboxWrapper
-from models.imagenet_inception_v3.foolbox_model import create_imagenet_iv3_model
-from models.imagenet_irn_v2.foolbox_model import create_imagenet_irn_v2_model
-from utils import dataset_imagenet
-from utils.imagenet_labels import label_to_name
-from utils.sampling.sampling_provider import SamplingProvider
-from utils.util import line_search_to_boundary, find_closest_img
+from BiasedBoundaryAttacker.src import bench_settings
+from BiasedBoundaryAttacker.src.attacks.biased_boundary_attack import BiasedBoundaryAttack
+from BiasedBoundaryAttacker.src.utils.distance_measures import DistL2
+from BiasedBoundaryAttacker.src.models.blackbox_wrapper import BlackboxWrapper
+from BiasedBoundaryAttacker.src.models.imagenet_inception_v3.foolbox_model import create_imagenet_iv3_model
+from BiasedBoundaryAttacker.src.models.imagenet_irn_v2.foolbox_model import create_imagenet_irn_v2_model
+from BiasedBoundaryAttacker.src.utils import dataset_imagenet
+from BiasedBoundaryAttacker.src.utils.imagenet_labels import label_to_name
+from BiasedBoundaryAttacker.src.utils.sampling.sampling_provider import SamplingProvider
+from BiasedBoundaryAttacker.src.utils.util import line_search_to_boundary, find_closest_img
 
 
 def main():

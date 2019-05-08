@@ -1,3 +1,7 @@
+from copy import deepcopy
+
+import numpy as np
+
 import keras
 from keras import Sequential
 from keras.layers import Conv2D, Activation, MaxPooling2D, Dropout, Flatten, Dense
@@ -65,3 +69,15 @@ def get_keras_features_labels(X_train, X_test, y_train, y_test, n_classes):
     X_test_extracted = X_test / 255
 
     return X_train_extracted, X_test_extracted, y_train, y_test
+
+
+# make random pixels black to avoid overreliance on a certain pixel(used as a defence algorithm)
+def dropout_images(original_images):
+    images = deepcopy(original_images)
+    D1 = np.random.rand(images.shape[0], images.shape[1], images.shape[2])
+    D1 = D1 < 0.5  # (using keep_prob as the threshold)
+    images[:, :, :, 0] = np.multiply(images[:, :, :, 0], D1)
+    images[:, :, :, 1] = np.multiply(images[:, :, :, 1], D1)
+    images[:, :, :, 2] = np.multiply(images[:, :, :, 2], D1)
+
+    return images

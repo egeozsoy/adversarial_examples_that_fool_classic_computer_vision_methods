@@ -1,6 +1,7 @@
 # Hyperparams
 vocab_size = 2500
 data_size = 20000
+dataset_name = 'imagenette'
 feature_extractor_name = 'bovw_extractor'
 visualize_sift = False
 visualize_hog = False
