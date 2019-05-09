@@ -200,7 +200,7 @@ if __name__ == '__main__':
         fmodel = FoolboxSklearnWrapper(bounds=(0, 255), channel_axis=2, feature_extractor=feature_extractor, predictor=model)
 
         if attack_name == 'BoundaryPlusPlus':
-            iter = 20
+            iter = 70
             attack = foolbox.attacks.BoundaryAttackPlusPlus(model=fmodel)
         elif attack_name == 'Boundary':
             iter = 2000

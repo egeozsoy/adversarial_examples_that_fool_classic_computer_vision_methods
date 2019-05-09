@@ -5,3 +5,4 @@ datasets/*
 voc_*
 features/*
 models/*
+*.png
