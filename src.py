@@ -9,12 +9,15 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.externals import joblib
 import foolbox
+from fishervector import FisherVectorGMM
 
-from configurations import vocab_size, data_size, image_size, use_classes, n_features, feature_extractor_name, visualize_hog, visualize_sift, model_name,dataset_name,attack_name
+from configurations import vocab_size, data_size, image_size, use_classes, n_features, gaussion_components, feature_extractor_name, visualize_hog, \
+    visualize_sift, model_name, dataset_name, attack_name
 from helpers.utils import filter_classes
 from helpers.image_utils import show_image, plot_result
-from helpers.feature_extractors import visualize_sift_points, hog_visualizer, get_feature_extractor, sift, extract_sift_features, bow_extract
-from helpers.foolbox_utils import FoolboxSklearnWrapper,find_closest_reference_image
+from helpers.feature_extractors import visualize_sift_points, hog_visualizer, get_feature_extractor, extract_sift_features, bow_extract, \
+    initilize_fishervector_gmm
+from helpers.foolbox_utils import FoolboxSklearnWrapper, find_closest_reference_image
 from helpers.dataset_loader import load_data
 
 if __name__ == '__main__':
@@ -34,8 +37,8 @@ if __name__ == '__main__':
     if not os.path.exists(features_folder):
         os.mkdir(features_folder)
 
-    iter_name = 'iter_dtn_{}_vs{}_ds{}_is{}_cc{}_nf{}_fe_{}'.format(dataset_name, vocab_size, data_size, image_size, len(use_classes), n_features,
-                                                                    feature_extractor.__name__)
+    iter_name = 'iter_dtn_{}_vs{}_ds{}_is{}_cc{}_nf{}_fe_{}_gc_{}'.format(dataset_name, vocab_size, data_size, image_size, len(use_classes), n_features,
+                                                                          feature_extractor.__name__, gaussion_components)
 
     print('Running iteration {}'.format(iter_name))
 
@@ -75,6 +78,7 @@ if __name__ == '__main__':
             show_image(X_train[a])
             hog_visualizer(X_train[a])
 
+    # bovw training
     if feature_extractor_name == 'bovw_extractor' and model_name != 'cnn':
 
         if not os.path.exists(os.path.join(vocs_folder, 'voc_{}.npy'.format(iter_name))):
@@ -102,10 +106,46 @@ if __name__ == '__main__':
 
         bow_extract.setVocabulary(voc)
 
+    # fisher kernel training
+    if feature_extractor_name == 'fishervector_extractor' and model_name != 'cnn':
+        if not os.path.exists(os.path.join(features_folder, 'fisherkernel_{}'.format(iter_name))):
+            # Fill bow with sift calculations
+            print('Calculating Sift Features for training images')
+            images_with_problems = 0
+            training_features = None
+            for idx, train_image in enumerate(X_train):
+
+                kp, desc = extract_sift_features(train_image)
+
+                # sometimes, sift extracts less than it is suppose to
+                if desc is None or desc.shape[0] < n_features:
+                    images_with_problems += 1
+                else:
+                    desc = desc[:n_features]
+                    desc = np.expand_dims(desc, axis=0)
+                    if training_features is None:
+                        training_features = desc
+                    else:
+                        training_features = np.concatenate([training_features, desc], axis=0)
+
+            print('Errors occurred for {} images'.format(images_with_problems))
+
+            print('Calculating Fisher Kernel for training images')
+            fishervector_gmm = FisherVectorGMM(n_kernels=gaussion_components).fit(training_features)
+
+            joblib.dump(fishervector_gmm, os.path.join(features_folder, 'fisherkernel_{}'.format(iter_name)))
+
+        else:
+            print('Loaded Fisher Kernel')
+            fishervector_gmm = joblib.load(os.path.join(features_folder, 'fisherkernel_{}'.format(iter_name)))
+
+        initilize_fishervector_gmm(fishervector_gmm)
+
     # Define where we should save
     full_model_path = os.path.join(models_folder, '{}_{}'.format(model_name, iter_name))
     full_features_path = os.path.join(features_folder, '{}_{}'.format(model_name, iter_name))
 
+    # model training
     if model_name == 'cnn':
         from helpers.keras_train import get_keras_scikitlearn_model, get_keras_features_labels, dropout_images
 
@@ -190,7 +230,7 @@ if __name__ == '__main__':
     else:
         label = int(np.argmax(y_test[test_idx]))
 
-    reference_image:np.ndarray = np.float32(find_closest_reference_image(test_image,X_test,predictions_from_testing,label))
+    reference_image: np.ndarray = np.float32(find_closest_reference_image(test_image, X_test, predictions_from_testing, label))
 
     adversarial = None
     # stop if unsuccessful after #timeout trials

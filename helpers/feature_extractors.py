@@ -10,6 +10,7 @@ from configurations import n_features, vocab_size
 sift = cv2.xfeatures2d.SIFT_create(nfeatures=n_features)
 matcher = cv2.FlannBasedMatcher(dict(algorithm=1, trees=5), {})
 bow_extract = cv2.BOWImgDescriptorExtractor(sift, matcher)
+fishervector_gmm = None
 
 
 def dummy_feature_extractor(images):
@@ -65,11 +66,43 @@ def hog_extractor(images):
     return hogs
 
 
+def initilize_fishervector_gmm(fv_gmm):
+    global fishervector_gmm
+    fishervector_gmm = fv_gmm
+
+
+# http://www.vlfeat.org/api/fisher-fundamentals.html
+def fishervector_extractor(images):
+    training_features = None
+
+    for image in images:
+        _, desc = extract_sift_features(np.uint8(image))
+
+        if desc is None or desc.shape[0] < n_features:
+            desc = np.zeros((n_features, 128))  # 128 because of sift descriptor size
+
+        desc = desc[:n_features]
+        desc = np.expand_dims(desc, axis=0)
+        if training_features is None:
+            training_features = desc
+        else:
+            training_features = np.concatenate([training_features, desc], axis=0)
+
+    fishervectors = fishervector_gmm.predict(training_features)  # (n_images, 2*n_kernels, n_feature_dim)
+    # TODO double check if flattening makes sense
+    # flatten
+    fishervectors = fishervectors.reshape((fishervectors.shape[0], -1))  # (n_images, 2*n_kernels * n_feature_dim)
+
+    return fishervectors
+
+
 def get_feature_extractor(extractor_name):
     if extractor_name == 'bovw_extractor':
         return bovw_extractor
     elif extractor_name == 'hog_extractor':
         return hog_extractor
+    elif extractor_name == 'fishervector_extractor':
+        return fishervector_extractor
     else:
         print('WARNING RETURNING DUMMY EXTRACTOR')
         return dummy_feature_extractor
