@@ -11,9 +11,10 @@ from sklearn.externals import joblib
 import foolbox
 from fishervector import FisherVectorGMM
 
-from configurations import vocab_size, data_size, batch_size, image_size, use_classes, n_features, gaussion_components, feature_extractor_name, visualize_hog, \
+from configurations import vocab_size, data_size, image_size, batch_size, use_classes, n_features, gaussion_components, \
+    feature_extractor_name, visualize_hog, \
     visualize_sift, model_name, dataset_name, attack_name
-from helpers.utils import filter_classes
+from helpers.utils import filter_classes,get_balanced_batch
 from helpers.image_utils import show_image, plot_result
 from helpers.feature_extractors import visualize_sift_points, hog_visualizer, get_feature_extractor, extract_sift_features, bow_extract, \
     initilize_fishervector_gmm
@@ -38,7 +39,7 @@ if __name__ == '__main__':
         os.mkdir(features_folder)
 
     iter_name = 'iter_dtn_{}_vs{}_ds{}_is{}_cc{}_nf{}_fe_{}'.format(dataset_name, vocab_size, data_size, image_size, len(use_classes), n_features,
-                                                                          feature_extractor.__name__)
+                                                                    feature_extractor.__name__)
 
     print('Running iteration {}'.format(iter_name))
 
@@ -141,7 +142,7 @@ if __name__ == '__main__':
 
         initilize_fishervector_gmm(fishervector_gmm)
 
-    iter_name = '{}_gc_{}_bs_{}'.format(iter_name,gaussion_components,batch_size)
+    iter_name = '{}_gc_{}'.format(iter_name, gaussion_components)
     # Define where we should save
     full_model_path = os.path.join(models_folder, '{}_{}'.format(model_name, iter_name))
     full_features_path = os.path.join(features_folder, '{}_{}'.format(model_name, iter_name))
@@ -155,89 +156,124 @@ if __name__ == '__main__':
     else:
         # if no batchsize is used, we can work with the typical sklearn models, else we have to use models that support partial fit
         if model_name == 'svc':
-            if batch_size is None:
-                model = LinearSVC()
-            else:
-                model = SGDClassifier(loss='hinge')
+            model = LinearSVC()
         elif model_name == 'forest':
-            if batch_size is None:
-                model = RandomForestClassifier(n_estimators=100, n_jobs=-1)
-            else:
-                raise Exception('RandomForestClassifier does not support batch training')
+            model = RandomForestClassifier(n_estimators=100, n_jobs=-1)
         elif model_name == 'logreg':
-            if batch_size is None:
-                model = LogisticRegression()
-            else:
-                model = SGDClassifier(loss='log')
+            model = LogisticRegression()
+        elif model_name == 'sgd_svc':
+            model = SGDClassifier(max_iter=1000,tol=1e-3,warm_start=True,n_jobs=-1)
         else:
             raise Exception('model_name not known')
 
-
     # model training
     model_training_needed = True
-    if os.path.exists(full_model_path) and False:
+    if os.path.exists(full_model_path):
         print('Loading Model, not going to train')
         model = joblib.load(full_model_path)
         model_training_needed = False
 
-    epochs = 5
-    if batch_size is None:
-        bs = len(X_train)
-        epochs = 1
-    else:
-        bs = batch_size
+    #TODO test ram consumption of cnn
+    if model_name == 'cnn':
+        if os.path.exists(full_features_path):
+            print('Loading Features Labels')
+            features_labels = joblib.load(full_features_path)
+        else:
+            print('Generating and saving Features Labels')
+            features_labels = get_keras_features_labels(X_train, X_test, y_train, y_test, len(use_classes))
+            joblib.dump(features_labels, full_features_path)
 
-    for epoch in range(epochs):
-        for batch in range(len(X_train) // bs): # only batch X_Train, test size is small enough that we don't need batching for it
-            batch_x_train = X_train[batch * bs:batch * bs + bs]
-            batch_y_train = y_train[batch * bs:batch * bs + bs]
-            batch_features_path = '{}_bs{}_bi{}'.format(full_features_path, bs,batch)
+        X_train_extracted, X_test_extracted, y_train, y_test = features_labels
 
-            if model_name == 'cnn':
-                if os.path.exists(batch_features_path):
-                    print('Loading Features Labels')
-                    features_labels = joblib.load(batch_features_path)
+        if model_training_needed:
+            print('Starting Model training {} and saving model'.format(model_name))
+            model.fit(dropout_images(X_train_extracted), y_train, validation_data=(dropout_images(X_test_extracted), y_test))
+            joblib.dump(model, full_model_path)
+
+    elif model_name == 'sgd_svc':
+
+        fitted = False
+        best_cross_val_score = -1
+
+        for epoch in range(20):
+            batch_train_x,batch_train_y,batch_cv_x, batch_cv_y = get_balanced_batch(X_train,y_train,batch_size,use_classes)
+
+            samples_per_class = {0:0,1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0}
+
+            for elem in batch_train_y:
+                samples_per_class[elem] += 1
+
+            samples_per_class = sorted(samples_per_class.items(), key=lambda kv: kv[1])
+
+            print('Generating and saving Features Labels')
+            features_labels = (feature_extractor(batch_train_x),feature_extractor(batch_cv_x),feature_extractor(X_test))
+
+            X_train_extracted, X_cv_extracted, X_test_extracted = features_labels
+
+            if model_training_needed:
+                print('Starting Model training {} and saving model'.format(model_name))
+                if not fitted:
+                    print('Fitting initial model')
+                    model.fit(X_train_extracted, batch_train_y)
+                    fitted = True
                 else:
-                    print('Generating and saving Features Labels')
-                    features_labels = get_keras_features_labels(batch_x_train, X_test, batch_y_train, y_test, len(use_classes))
-                    joblib.dump(features_labels, batch_features_path)
+                    for i in range(10): # as partialfit is not as effective(max_iter=1), we can call it more than once for the same data
+                        model.partial_fit(X_train_extracted, batch_train_y,classes=use_classes)
 
-                X_train_extracted, X_test_extracted, y_train, y_test = features_labels
+            print('Class distribution for batch is : {}'.format(samples_per_class))
 
-                if model_training_needed:
-                    print('Starting Model training {} and saving model'.format(model_name))
-                    # TODO check if neural network support partial fit
-                    model.partial_fit(dropout_images(X_train_extracted), y_train, validation_data=(dropout_images(X_test_extracted), y_test))
-                    joblib.dump(model, full_model_path)
-
-            else:
-                if os.path.exists(batch_features_path):
-                    print('Loading Features Labels')
-                    features_labels = joblib.load(batch_features_path)
-
-                else:
-                    print('Generating and saving Features Labels')
-                    features_labels = (feature_extractor(batch_x_train), feature_extractor(X_test))
-                    joblib.dump(features_labels, batch_features_path)
-
-                X_train_extracted, X_test_extracted = features_labels
-
-                if model_training_needed:
-                    print('Starting Model training {} and saving model'.format(model_name))
-                    if batch_size is None:
-                        model.fit(X_train_extracted, batch_y_train)
-                    else:
-                        model.partial_fit(X_train_extracted,batch_y_train,use_classes)
-                    joblib.dump(model, full_model_path)
-
-            print('Training set performance {}'.format(model.score(X_train_extracted, batch_y_train)))
+            print('Training set performance {}'.format(model.score(X_train_extracted, batch_train_y)))
+            cross_val_performance = model.score(X_cv_extracted, batch_cv_y)
+            # We can implement early stopping if we want, we currently don't
+            print('CrossVal set performance {}'.format(cross_val_performance))
             print('Testing set performance {}'.format(model.score(X_test_extracted, y_test)))
 
-            print('Sample predictions from training {}'.format(model.predict(X_train_extracted[:20])))
-            print('Ground truth for        training {}'.format(batch_y_train[:20]))
             predictions_from_testing = model.predict(X_test_extracted)
+
+            samples_per_class = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0}
+
+            for elem in predictions_from_testing:
+                samples_per_class[elem] += 1
+
+            samples_per_class = sorted(samples_per_class.items(), key=lambda kv: kv[1])
+
+            print('Class distribution for testset prediction is : {}'.format(samples_per_class))
+
             print('Sample predictions from testing {}'.format(predictions_from_testing[:20]))
             print('Ground truth for        testing {}'.format(y_test[:20]))
+
+            if model_training_needed and cross_val_performance > best_cross_val_score:
+                print('Saving model with score {}'.format(cross_val_performance))
+                joblib.dump(model, full_model_path)
+                best_cross_val_score = cross_val_performance
+
+
+    else:
+        if os.path.exists(full_features_path):
+            print('Loading Features Labels')
+            features_labels = joblib.load(full_features_path)
+
+        else:
+            print('Generating and saving Features Labels')
+            features_labels = (feature_extractor(X_train), feature_extractor(X_test))
+            joblib.dump(features_labels, full_features_path)
+
+        X_train_extracted, X_test_extracted = features_labels
+
+        if model_training_needed:
+            print('Starting Model training {} and saving model'.format(model_name))
+            model.fit(X_train_extracted, y_train)
+            joblib.dump(model, full_model_path)
+
+    if model_name != 'sgd_svc': # because if we used batchsize, this values dont really make sense
+        print('Training set performance {}'.format(model.score(X_train_extracted, y_train)))
+        print('Testing set performance {}'.format(model.score(X_test_extracted, y_test)))
+
+        print('Sample predictions from training {}'.format(model.predict(X_train_extracted[:20])))
+        print('Ground truth for        training {}'.format(y_train[:20]))
+        predictions_from_testing = model.predict(X_test_extracted)
+        print('Sample predictions from testing {}'.format(predictions_from_testing[:20]))
+        print('Ground truth for        testing {}'.format(y_test[:20]))
 
     # visualize some predictions
     for i in range(0):

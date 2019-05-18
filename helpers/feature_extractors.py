@@ -73,20 +73,14 @@ def initilize_fishervector_gmm(fv_gmm):
 
 # http://www.vlfeat.org/api/fisher-fundamentals.html
 def fishervector_extractor(images):
-    training_features = None
+    training_features = np.zeros((images.shape[0],n_features,128)) # 128 because of sift
 
-    for image in images:
+    for idx,image in enumerate(images):
         _, desc = extract_sift_features(np.uint8(image))
 
-        if desc is None or desc.shape[0] < n_features:
-            desc = np.zeros((n_features, 128))  # 128 because of sift descriptor size
-
-        desc = desc[:n_features]
-        desc = np.expand_dims(desc, axis=0)
-        if training_features is None:
-            training_features = desc
-        else:
-            training_features = np.concatenate([training_features, desc], axis=0)
+        if desc is not None and desc.shape[0] >= n_features: #else leave descriptors as np.zeros
+            desc = desc[:n_features]
+            training_features[idx] = desc
 
     fishervectors = fishervector_gmm.predict(training_features)  # (n_images, 2*n_kernels, n_feature_dim)
     # TODO double check if flattening makes sense
