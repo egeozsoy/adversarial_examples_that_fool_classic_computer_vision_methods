@@ -29,9 +29,9 @@ def get_balanced_batch(x, y, batch_size, classes):
         x_c = x[indices_mask]
         y_c = y[indices_mask]
 
-        random_indices = np.random.choice(x_c.shape[0], class_size, replace=False)
-        batch_train_x[c * class_size:c * class_size + class_size] = x_c[random_indices, :]
-        batch_train_y[c * class_size:c * class_size + class_size] = y_c[random_indices]
+        random_indices = np.random.choice(x_c.shape[0] - 10, class_size, replace=False) # the first 10 elements are reserverd for cv
+        batch_train_x[c * class_size:c * class_size + class_size] = x_c[random_indices + 10, :]
+        batch_train_y[c * class_size:c * class_size + class_size] = y_c[random_indices + 10]
 
         for i in range(10):
             batch_cv_x[c*10+i] = x_c[i]

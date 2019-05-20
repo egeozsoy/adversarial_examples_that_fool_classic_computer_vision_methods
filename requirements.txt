@@ -1,6 +1,7 @@
 foolbox
 numpy
 keras
+Keras-Applications
 matplotlib
 tensorflow
 scikit-learn

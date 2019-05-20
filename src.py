@@ -13,7 +13,7 @@ from fishervector import FisherVectorGMM
 
 from configurations import vocab_size, data_size, image_size, batch_size, use_classes, n_features, gaussion_components, \
     feature_extractor_name, visualize_hog, \
-    visualize_sift, model_name, dataset_name, attack_name
+    visualize_sift, model_name, force_model_reload, dataset_name, attack_name
 from helpers.utils import filter_classes,get_balanced_batch
 from helpers.image_utils import show_image, plot_result
 from helpers.feature_extractors import visualize_sift_points, hog_visualizer, get_feature_extractor, extract_sift_features, bow_extract, \
@@ -150,6 +150,7 @@ if __name__ == '__main__':
     # model selection
     if model_name == 'cnn':
         from helpers.keras_train import get_keras_scikitlearn_model, get_keras_features_labels, dropout_images
+        from keras.callbacks import EarlyStopping
 
         model = get_keras_scikitlearn_model(X_train.shape, len(use_classes))
 
@@ -168,29 +169,33 @@ if __name__ == '__main__':
 
     # model training
     model_training_needed = True
-    if os.path.exists(full_model_path):
+    if os.path.exists(full_model_path) and not force_model_reload:
         print('Loading Model, not going to train')
         model = joblib.load(full_model_path)
         model_training_needed = False
 
-    #TODO test ram consumption of cnn
     if model_name == 'cnn':
-        if os.path.exists(full_features_path):
-            print('Loading Features Labels')
-            features_labels = joblib.load(full_features_path)
-        else:
-            print('Generating and saving Features Labels')
-            features_labels = get_keras_features_labels(X_train, X_test, y_train, y_test, len(use_classes))
-            joblib.dump(features_labels, full_features_path)
-
-        X_train_extracted, X_test_extracted, y_train, y_test = features_labels
+        #we only do one big balanced batch as keras wrapper for scikitlearn doesn't support partial fit.
+        if not model_training_needed:
+            batch_size = 6000 # smaller batchsize because we just want to see some results
+        batch_train_x, batch_train_y, batch_cv_x, batch_cv_y = get_balanced_batch(X_train, y_train, batch_size, use_classes)
+        features_labels = get_keras_features_labels(batch_train_x, batch_cv_x,X_test, batch_train_y,batch_cv_y, y_test, len(use_classes))
+        X_train_extracted, X_cv_extracted, batch_x_test_extract, batch_train_y, batch_cv_y, batch_test_y = features_labels
 
         if model_training_needed:
             print('Starting Model training {} and saving model'.format(model_name))
-            model.fit(dropout_images(X_train_extracted), y_train, validation_data=(dropout_images(X_test_extracted), y_test))
+            early_stopper = EarlyStopping(patience=20, verbose=1, restore_best_weights=True)
+
+            model.fit(dropout_images(X_train_extracted), batch_train_y, validation_data=(dropout_images(X_cv_extracted), batch_cv_y),callbacks=[early_stopper])
             joblib.dump(model, full_model_path)
 
+        print('Training set performance {}'.format(model.score(dropout_images(X_train_extracted), batch_train_y)))
+        print('CV set performance {}'.format(model.score(dropout_images(X_cv_extracted), batch_cv_y)))
+        print('Testing set performance {}'.format(model.score(dropout_images(batch_x_test_extract), batch_test_y)))
+        predictions_from_testing = model.predict(dropout_images(batch_x_test_extract))
+
     elif model_name == 'sgd_svc':
+        #TODO make sure these are also normalized
 
         fitted = False
         best_cross_val_score = -1
@@ -265,7 +270,7 @@ if __name__ == '__main__':
             model.fit(X_train_extracted, y_train)
             joblib.dump(model, full_model_path)
 
-    if model_name != 'sgd_svc': # because if we used batchsize, this values dont really make sense
+    if model_name != 'sgd_svc' and model_name != 'cnn': # because if we used batchsize, this values dont really make sense
         print('Training set performance {}'.format(model.score(X_train_extracted, y_train)))
         print('Testing set performance {}'.format(model.score(X_test_extracted, y_test)))
 
@@ -276,8 +281,11 @@ if __name__ == '__main__':
         print('Ground truth for        testing {}'.format(y_test[:20]))
 
     # visualize some predictions
-    for i in range(0):
-        label = str(model.predict(X_test_extracted[i:i + 1])[0])
+    for i in range(5):
+        if model_name == 'cnn':
+            label = str(model.predict(X_test[i:i + 1])[0])
+        else:
+            label = str(model.predict(X_test_extracted[i:i + 1])[0])
         show_image(X_test[i], '{}-{}'.format(y_test[i], label))
 
     test_idx = 1
@@ -297,6 +305,8 @@ if __name__ == '__main__':
     # stop if unsuccessful after #timeout trials
     timeout = 5
 
+
+    #TODO CHECK image values(where are there between 0 and 1, where 0 and 255 etc.)
     while adversarial is None and timeout >= 0:
         fmodel = FoolboxSklearnWrapper(bounds=(0, 255), channel_axis=2, feature_extractor=feature_extractor, predictor=model)
 

@@ -2,6 +2,7 @@
 vocab_size = 2500
 data_size = 20000
 batch_size = None
+input_dropout = False
 dataset_name = 'imagenette'
 feature_extractor_name = 'fishervector_extractor'
 attack_name = 'BoundaryPlusPlus'
@@ -22,7 +23,11 @@ else:
 
 gaussion_components = 256  # the paper uses 256 kernel, and values like 128 seem to be realistic. Fisher Kernels on Visual Vocabularies for Image Categorization
 
-model_name = 'sgd_svc'
+model_name = 'cnn'
+force_model_reload = False
 
 if model_name == 'sgd_svc':
     batch_size = 8000
+
+elif model_name == 'cnn':
+    batch_size = 11000

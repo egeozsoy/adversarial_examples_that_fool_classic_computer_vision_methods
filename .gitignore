@@ -2,7 +2,7 @@ cifar-10-batches-py/*
 .idea/*
 model.pt
 datasets/*
-voc_*
+vocs/*
 features/*
 models/*
 *.png
