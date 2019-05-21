@@ -12,11 +12,11 @@ class FoolboxSklearnWrapper(Model):
         super().__init__(bounds, channel_axis, preprocessing)
         self.predictor = predictor
         self.feature_extractor = feature_extractor
-        self.num_classes = num_classes
+        self.number_classes = num_classes
         self.queries = 0
 
     def num_classes(self):
-        return self.num_classes
+        return self.number_classes
 
     def batch_predictions(self, images: np.ndarray):
         self.queries += 1 # we want to count amount of queries

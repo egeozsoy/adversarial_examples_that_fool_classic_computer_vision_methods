@@ -16,7 +16,8 @@ config.gpu_options.per_process_gpu_memory_fraction = 0.8
 set_session(tf.Session(config=config))
 
 def make_resnet_model():
-    model  = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=True, weights=None, input_shape=X_shape[1:], classes=class_count)
+    model  = keras.applications.inception_v3.InceptionV3(include_top=True, weights=None, input_shape=X_shape[1:], classes=class_count)
+    # model  = keras.applications.resnet50(include_top=True, weights=None, input_shape=X_shape[1:], classes=class_count) # this also works but the file size is 3x and is slower
     opt = keras.optimizers.Adam(lr=0.001)
 
     model.compile(loss='categorical_crossentropy',

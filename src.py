@@ -11,10 +11,11 @@ from sklearn.externals import joblib
 import foolbox
 from fishervector import FisherVectorGMM
 
+# these will not be found automatically because of the way they are important, they can be ignored
 from configurations import vocab_size, data_size, image_size, batch_size, use_classes, n_features, gaussion_components, \
     feature_extractor_name, visualize_hog, \
     visualize_sift, model_name, force_model_reload, dataset_name, attack_name
-from helpers.utils import filter_classes,get_balanced_batch
+from helpers.utils import filter_classes, get_balanced_batch
 from helpers.image_utils import show_image, plot_result
 from helpers.feature_extractors import visualize_sift_points, hog_visualizer, get_feature_extractor, extract_sift_features, bow_extract, \
     initilize_fishervector_gmm
@@ -163,7 +164,7 @@ if __name__ == '__main__':
         elif model_name == 'logreg':
             model = LogisticRegression()
         elif model_name == 'sgd_svc':
-            model = SGDClassifier(max_iter=1000,tol=1e-3,warm_start=True,n_jobs=-1)
+            model = SGDClassifier(max_iter=1000, tol=1e-3, warm_start=True, n_jobs=-1)
         else:
             raise Exception('model_name not known')
 
@@ -175,18 +176,18 @@ if __name__ == '__main__':
         model_training_needed = False
 
     if model_name == 'cnn':
-        #we only do one big balanced batch as keras wrapper for scikitlearn doesn't support partial fit.
+        # we only do one big balanced batch as keras wrapper for scikitlearn doesn't support partial fit.
         if not model_training_needed:
-            batch_size = 6000 # smaller batchsize because we just want to see some results
+            batch_size = 1000  # smaller batchsize because we just want to see some results
         batch_train_x, batch_train_y, batch_cv_x, batch_cv_y = get_balanced_batch(X_train, y_train, batch_size, use_classes)
-        features_labels = get_keras_features_labels(batch_train_x, batch_cv_x,X_test, batch_train_y,batch_cv_y, y_test, len(use_classes))
+        features_labels = get_keras_features_labels(batch_train_x, batch_cv_x, X_test, batch_train_y, batch_cv_y, y_test, len(use_classes))
         X_train_extracted, X_cv_extracted, batch_x_test_extract, batch_train_y, batch_cv_y, batch_test_y = features_labels
 
         if model_training_needed:
             print('Starting Model training {} and saving model'.format(model_name))
             early_stopper = EarlyStopping(patience=20, verbose=1, restore_best_weights=True)
 
-            model.fit(dropout_images(X_train_extracted), batch_train_y, validation_data=(dropout_images(X_cv_extracted), batch_cv_y),callbacks=[early_stopper])
+            model.fit(dropout_images(X_train_extracted), batch_train_y, validation_data=(dropout_images(X_cv_extracted), batch_cv_y), callbacks=[early_stopper])
             joblib.dump(model, full_model_path)
 
         print('Training set performance {}'.format(model.score(dropout_images(X_train_extracted), batch_train_y)))
@@ -195,23 +196,23 @@ if __name__ == '__main__':
         predictions_from_testing = model.predict(dropout_images(batch_x_test_extract))
 
     elif model_name == 'sgd_svc':
-        #TODO make sure these are also normalized
+        # TODO make sure these are also normalized
 
         fitted = False
         best_cross_val_score = -1
 
         for epoch in range(20):
-            batch_train_x,batch_train_y,batch_cv_x, batch_cv_y = get_balanced_batch(X_train,y_train,batch_size,use_classes)
+            batch_train_x, batch_train_y, batch_cv_x, batch_cv_y = get_balanced_batch(X_train, y_train, batch_size, use_classes)
 
-            samples_per_class = {0:0,1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0}
+            samples_per_class = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0}
 
             for elem in batch_train_y:
                 samples_per_class[elem] += 1
 
-            samples_per_class = sorted(samples_per_class.items(), key=lambda kv: kv[1])
+            samples_per_class = sorted(samples_per_class.items(), key=lambda kv: kv[1]) #type: ignore
 
             print('Generating and saving Features Labels')
-            features_labels = (feature_extractor(batch_train_x),feature_extractor(batch_cv_x),feature_extractor(X_test))
+            features_labels = (feature_extractor(batch_train_x), feature_extractor(batch_cv_x), feature_extractor(X_test))
 
             X_train_extracted, X_cv_extracted, X_test_extracted = features_labels
 
@@ -222,8 +223,8 @@ if __name__ == '__main__':
                     model.fit(X_train_extracted, batch_train_y)
                     fitted = True
                 else:
-                    for i in range(10): # as partialfit is not as effective(max_iter=1), we can call it more than once for the same data
-                        model.partial_fit(X_train_extracted, batch_train_y,classes=use_classes)
+                    for i in range(10):  # as partialfit is not as effective(max_iter=1), we can call it more than once for the same data
+                        model.partial_fit(X_train_extracted, batch_train_y, classes=use_classes)
 
             print('Class distribution for batch is : {}'.format(samples_per_class))
 
@@ -240,7 +241,7 @@ if __name__ == '__main__':
             for elem in predictions_from_testing:
                 samples_per_class[elem] += 1
 
-            samples_per_class = sorted(samples_per_class.items(), key=lambda kv: kv[1])
+            samples_per_class = sorted(samples_per_class.items(), key=lambda kv: kv[1]) #type: ignore
 
             print('Class distribution for testset prediction is : {}'.format(samples_per_class))
 
@@ -270,7 +271,7 @@ if __name__ == '__main__':
             model.fit(X_train_extracted, y_train)
             joblib.dump(model, full_model_path)
 
-    if model_name != 'sgd_svc' and model_name != 'cnn': # because if we used batchsize, this values dont really make sense
+    if model_name != 'sgd_svc' and model_name != 'cnn':  # because if we used batchsize, this values dont really make sense
         print('Training set performance {}'.format(model.score(X_train_extracted, y_train)))
         print('Testing set performance {}'.format(model.score(X_test_extracted, y_test)))
 
@@ -281,12 +282,12 @@ if __name__ == '__main__':
         print('Ground truth for        testing {}'.format(y_test[:20]))
 
     # visualize some predictions
-    for i in range(5):
+    for i in range(0):
         if model_name == 'cnn':
-            label = str(model.predict(X_test[i:i + 1])[0])
+            str_label = str(model.predict(X_test[i:i + 1])[0])
         else:
-            label = str(model.predict(X_test_extracted[i:i + 1])[0])
-        show_image(X_test[i], '{}-{}'.format(y_test[i], label))
+            str_label = str(model.predict(X_test_extracted[i:i + 1])[0])
+        show_image(X_test[i], '{}-{}'.format(y_test[i], str_label))
 
     test_idx = 1
     reference_idx = 0
@@ -294,10 +295,7 @@ if __name__ == '__main__':
     # starting adversarial
     test_image = np.float32(X_test[test_idx])
 
-    if model_name != 'cnn':
-        label = y_test[test_idx]
-    else:
-        label = int(np.argmax(y_test[test_idx]))
+    label = int(y_test[test_idx])
 
     reference_image: np.ndarray = np.float32(find_closest_reference_image(test_image, X_test, predictions_from_testing, label))
 
@@ -305,8 +303,7 @@ if __name__ == '__main__':
     # stop if unsuccessful after #timeout trials
     timeout = 5
 
-
-    #TODO CHECK image values(where are there between 0 and 1, where 0 and 255 etc.)
+    # TODO CHECK image values(where are there between 0 and 1, where 0 and 255 etc.)
     while adversarial is None and timeout >= 0:
         fmodel = FoolboxSklearnWrapper(bounds=(0, 255), channel_axis=2, feature_extractor=feature_extractor, predictor=model)
 
@@ -327,7 +324,7 @@ if __name__ == '__main__':
     if model_name != 'cnn':
         adv_label = model.predict(feature_extractor(np.array([adversarial])))[0]
     else:
-        adv_label = int(np.argmax(model.predict(np.array([adversarial]))[0]))
+        adv_label = int(model.predict(np.array([adversarial]))[0])
 
     print('Adverserial image predicted as {}'.format(adv_label))
     if adversarial is not None:

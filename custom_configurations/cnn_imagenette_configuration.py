@@ -1,7 +1,7 @@
 from typing import List
 
-# Hyperparams, they(most of them) will be overwritten by a corresponding configuration, these values are just a guide line, or example
-vocab_size: int = 0
+# Hyperparams
+vocab_size: int = 0  # has no impact
 data_size: int = 20000
 batch_size: int = 11000
 dataset_name: str = 'imagenette'
@@ -20,8 +20,3 @@ gaussion_components: int = 0  # has no impcact in this case
 
 model_name: str = 'cnn'
 force_model_reload: bool = False
-
-# should correspond to a configuration in custom_configurations
-
-configuration_name = 'cnn_imagenette'
-exec('from custom_configurations.{}_configuration import *'.format(configuration_name))
