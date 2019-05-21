@@ -1,9 +1,11 @@
+from typing import List,Tuple
+
 import numpy as np
 from sklearn.utils import shuffle
 
 
 # delete classes that are not in keep_classes, simplify cifar-10
-def filter_classes(X, y, keep_classes):
+def filter_classes(X:np.ndarray, y:np.ndarray, keep_classes:List[int]) -> Tuple[np.ndarray,np.ndarray]:
     logic_result = y == keep_classes[0]
     for keep_class in keep_classes[1:]:
         logic_result = np.logical_or(logic_result, y == keep_class)
@@ -14,7 +16,7 @@ def filter_classes(X, y, keep_classes):
     return X, y
 
 # guarentee that a batch has almost equal class distribution
-def get_balanced_batch(x, y, batch_size, classes):
+def get_balanced_batch(x:np.ndarray, y:np.ndarray, batch_size:int, classes:List[int]) -> Tuple[np.ndarray,np.ndarray,np.ndarray,np.ndarray]:
     shape = list(x.shape)
     shape[0] = batch_size
     batch_train_x = np.zeros(shape,dtype=x.dtype)

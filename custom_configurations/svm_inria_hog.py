@@ -13,7 +13,7 @@ image_size = 32 * 5
 use_classes = [0,1]
 n_features = 0
 
-gaussion_components = 256  # has no impact
+gaussion_components = 0  # has no impact
 
 model_name = 'svc'
 force_model_reload = False

@@ -6,3 +6,4 @@ vocs/*
 features/*
 models/*
 *.png
+.mypy_cache/*

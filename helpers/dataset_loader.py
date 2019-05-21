@@ -1,4 +1,5 @@
 import os
+from typing import Tuple
 
 import cv2
 import numpy as np
@@ -7,20 +8,20 @@ from sklearn.datasets import fetch_openml
 datasets_root = 'datasets'
 
 
-def unpickle(file):
+def unpickle(file:str):
     import pickle
     with open(file, 'rb') as fo:
         data = pickle.load(fo, encoding='bytes')
     return data
 
 
-def load_cifar_10_data(get_test=False):
-    file1 = os.path.join(datasets_root, "cifar-10-batches-py/data_batch_1")
-    file2 = os.path.join(datasets_root, "cifar-10-batches-py/data_batch_2")
-    file3 = os.path.join(datasets_root, "cifar-10-batches-py/data_batch_3")
-    file4 = os.path.join(datasets_root, "cifar-10-batches-py/data_batch_4")
-    file5 = os.path.join(datasets_root, "cifar-10-batches-py/data_batch_5")
-    test_file = os.path.join(datasets_root, 'cifar-10-batches-py/test_batch')
+def load_cifar_10_data(get_test:bool=False) -> Tuple[np.ndarray,np.ndarray]:
+    file1:str = os.path.join(datasets_root, "cifar-10-batches-py/data_batch_1")
+    file2:str = os.path.join(datasets_root, "cifar-10-batches-py/data_batch_2")
+    file3:str = os.path.join(datasets_root, "cifar-10-batches-py/data_batch_3")
+    file4:str = os.path.join(datasets_root, "cifar-10-batches-py/data_batch_4")
+    file5:str = os.path.join(datasets_root, "cifar-10-batches-py/data_batch_5")
+    test_file:str = os.path.join(datasets_root, 'cifar-10-batches-py/test_batch')
 
     if not get_test:
         data1 = unpickle(file1)
@@ -39,8 +40,8 @@ def load_cifar_10_data(get_test=False):
         return np.uint8(data[b'data']), np.float32(data[b'labels'])
 
 
-def load_mnist_data():
-    mnist_folder = os.path.join(datasets_root, 'mnist')
+def load_mnist_data() -> Tuple[np.ndarray,np.ndarray]:
+    mnist_folder:str = os.path.join(datasets_root, 'mnist')
     if not os.path.exists(mnist_folder):
         # data not found
         os.mkdir(mnist_folder)
@@ -59,7 +60,7 @@ def load_mnist_data():
     return X, y
 
 
-def load_fmnist_data():
+def load_fmnist_data() -> Tuple[np.ndarray,np.ndarray]:
     fmnist_folder = os.path.join(datasets_root, 'fmnist')
     if not os.path.exists(fmnist_folder):
         # data not found
@@ -79,7 +80,7 @@ def load_fmnist_data():
     return X, y
 
 
-def load_imagenette_data(image_size, get_test=False):
+def load_imagenette_data(image_size:int, get_test:bool=False) -> Tuple[np.ndarray,np.ndarray]:
     imagenette_folder = os.path.join(datasets_root, 'imagenette-160')
     folder_to_load = 'train' if get_test == False else 'val'
     X_name = 'X_{}.npy'.format(folder_to_load)
@@ -120,7 +121,7 @@ def load_imagenette_data(image_size, get_test=False):
     return X, y
 
 
-def load_inria_dataset(image_size, get_test=False):
+def load_inria_dataset(image_size:int, get_test:bool=False) -> Tuple[np.ndarray,np.ndarray]:
     inria_folder = os.path.join(datasets_root, 'INRIA')
     folder_to_load = 'Train' if get_test == False else 'Test'
     X_name = 'X_{}.npy'.format(folder_to_load)
@@ -166,7 +167,7 @@ def load_inria_dataset(image_size, get_test=False):
     return X, y
 
 
-def load_data(image_size, get_test=False, dataset_name='imagenette'):
+def load_data(image_size:int, get_test:bool=False, dataset_name:str='imagenette') -> Tuple[np.ndarray,np.ndarray]:
     if dataset_name == 'mnist':
         return load_mnist_data()
     elif dataset_name == 'fmnist':

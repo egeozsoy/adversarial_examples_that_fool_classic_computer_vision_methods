@@ -24,9 +24,9 @@ from helpers.dataset_loader import load_data
 
 if __name__ == '__main__':
 
-    vocs_folder = 'vocs'
-    models_folder = 'models'
-    features_folder = 'features'
+    vocs_folder:str = 'vocs'
+    models_folder:str = 'models'
+    features_folder:str = 'features'
 
     feature_extractor = get_feature_extractor(feature_extractor_name)
 
@@ -39,7 +39,7 @@ if __name__ == '__main__':
     if not os.path.exists(features_folder):
         os.mkdir(features_folder)
 
-    iter_name = 'iter_dtn_{}_vs{}_ds{}_is{}_cc{}_nf{}_fe_{}'.format(dataset_name, vocab_size, data_size, image_size, len(use_classes), n_features,
+    iter_name:str = 'iter_dtn_{}_vs{}_ds{}_is{}_cc{}_nf{}_fe_{}'.format(dataset_name, vocab_size, data_size, image_size, len(use_classes), n_features,
                                                                     feature_extractor.__name__)
 
     print('Running iteration {}'.format(iter_name))
@@ -113,7 +113,7 @@ if __name__ == '__main__':
         if not os.path.exists(os.path.join(features_folder, 'fisherkernel_{}'.format(iter_name))):
             # Fill bow with sift calculations
             print('Calculating Sift Features for training images')
-            images_with_problems = 0
+            images_with_problems:int = 0
             training_features = None
             for idx, train_image in enumerate(X_train):
 
@@ -304,6 +304,7 @@ if __name__ == '__main__':
     timeout = 5
 
     # TODO CHECK image values(where are there between 0 and 1, where 0 and 255 etc.)
+    #TODO targeted
     while adversarial is None and timeout >= 0:
         fmodel = FoolboxSklearnWrapper(bounds=(0, 255), channel_axis=2, feature_extractor=feature_extractor, predictor=model)
 
