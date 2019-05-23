@@ -1,5 +1,5 @@
 # Hyperparams
-vocab_size = 2500
+vocab_size = 2500 # has no impact
 data_size = 20000
 batch_size = None # has no impact
 input_dropout = False # has no impact

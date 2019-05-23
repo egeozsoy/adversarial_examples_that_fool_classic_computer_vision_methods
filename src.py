@@ -24,9 +24,9 @@ from helpers.dataset_loader import load_data
 
 if __name__ == '__main__':
 
-    vocs_folder:str = 'vocs'
-    models_folder:str = 'models'
-    features_folder:str = 'features'
+    vocs_folder: str = 'vocs'
+    models_folder: str = 'models'
+    features_folder: str = 'features'
 
     feature_extractor = get_feature_extractor(feature_extractor_name)
 
@@ -39,8 +39,8 @@ if __name__ == '__main__':
     if not os.path.exists(features_folder):
         os.mkdir(features_folder)
 
-    iter_name:str = 'iter_dtn_{}_vs{}_ds{}_is{}_cc{}_nf{}_fe_{}'.format(dataset_name, vocab_size, data_size, image_size, len(use_classes), n_features,
-                                                                    feature_extractor.__name__)
+    iter_name: str = 'iter_dtn_{}_vs{}_ds{}_is{}_cc{}_nf{}_fe_{}'.format(dataset_name, vocab_size, data_size, image_size, len(use_classes), n_features,
+                                                                         feature_extractor.__name__)
 
     print('Running iteration {}'.format(iter_name))
 
@@ -81,7 +81,7 @@ if __name__ == '__main__':
             hog_visualizer(X_train[a])
 
     # bovw training
-    if feature_extractor_name == 'bovw_extractor' and model_name != 'cnn':
+    if feature_extractor_name == 'bovw_extractor':
 
         if not os.path.exists(os.path.join(vocs_folder, 'voc_{}.npy'.format(iter_name))):
             bow_train = cv2.BOWKMeansTrainer(vocab_size)
@@ -109,11 +109,11 @@ if __name__ == '__main__':
         bow_extract.setVocabulary(voc)
 
     # fisher kernel training
-    if feature_extractor_name == 'fishervector_extractor' and model_name != 'cnn':
+    if feature_extractor_name == 'fishervector_extractor':
         if not os.path.exists(os.path.join(features_folder, 'fisherkernel_{}'.format(iter_name))):
             # Fill bow with sift calculations
             print('Calculating Sift Features for training images')
-            images_with_problems:int = 0
+            images_with_problems: int = 0
             training_features = None
             for idx, train_image in enumerate(X_train):
 
@@ -124,12 +124,15 @@ if __name__ == '__main__':
                     images_with_problems += 1
                 else:
                     desc = desc[:n_features]
-                    desc = np.expand_dims(desc, axis=0)
+                    desc = np.expand_dims(desc, axis=0).astype(np.float32) # increase this if more accuracy is required
                     if training_features is None:
                         training_features = desc
                     else:
                         training_features = np.concatenate([training_features, desc], axis=0)
 
+            # Generally errors occur if less than the requested amount of sift features were found per image,
+            # in training time, we ignore these images, in test time, we use zero vector to represent these images.
+            # Obviously makes it impossible to predict that image, so we want to choose a n_features count for sift that minimizes this error, while still giving good results.
             print('Errors occurred for {} images'.format(images_with_problems))
 
             print('Calculating Fisher Kernel for training images')
@@ -152,21 +155,15 @@ if __name__ == '__main__':
     if model_name == 'cnn':
         from helpers.keras_train import get_keras_scikitlearn_model, get_keras_features_labels, dropout_images
         from keras.callbacks import EarlyStopping
-
         model = get_keras_scikitlearn_model(X_train.shape, len(use_classes))
-
+    elif model_name == 'svc':
+        model = LinearSVC()
+    elif model_name == 'forest':
+        model = RandomForestClassifier(n_estimators=100, n_jobs=-1)
+    elif model_name == 'logreg':
+        model = LogisticRegression()
     else:
-        # if no batchsize is used, we can work with the typical sklearn models, else we have to use models that support partial fit
-        if model_name == 'svc':
-            model = LinearSVC()
-        elif model_name == 'forest':
-            model = RandomForestClassifier(n_estimators=100, n_jobs=-1)
-        elif model_name == 'logreg':
-            model = LogisticRegression()
-        elif model_name == 'sgd_svc':
-            model = SGDClassifier(max_iter=1000, tol=1e-3, warm_start=True, n_jobs=-1)
-        else:
-            raise Exception('model_name not known')
+        raise Exception('model_name not known')
 
     # model training
     model_training_needed = True
@@ -178,7 +175,7 @@ if __name__ == '__main__':
     if model_name == 'cnn':
         # we only do one big balanced batch as keras wrapper for scikitlearn doesn't support partial fit.
         if not model_training_needed:
-            batch_size = 1000  # smaller batchsize because we just want to see some results
+            batch_size = 1000  # if not training use smaller batchsize because we just want to see some results.
         batch_train_x, batch_train_y, batch_cv_x, batch_cv_y = get_balanced_batch(X_train, y_train, batch_size, use_classes)
         features_labels = get_keras_features_labels(batch_train_x, batch_cv_x, X_test, batch_train_y, batch_cv_y, y_test, len(use_classes))
         X_train_extracted, X_cv_extracted, batch_x_test_extract, batch_train_y, batch_cv_y, batch_test_y = features_labels
@@ -194,65 +191,6 @@ if __name__ == '__main__':
         print('CV set performance {}'.format(model.score(dropout_images(X_cv_extracted), batch_cv_y)))
         print('Testing set performance {}'.format(model.score(dropout_images(batch_x_test_extract), batch_test_y)))
         predictions_from_testing = model.predict(dropout_images(batch_x_test_extract))
-
-    elif model_name == 'sgd_svc':
-        # TODO make sure these are also normalized
-
-        fitted = False
-        best_cross_val_score = -1
-
-        for epoch in range(20):
-            batch_train_x, batch_train_y, batch_cv_x, batch_cv_y = get_balanced_batch(X_train, y_train, batch_size, use_classes)
-
-            samples_per_class = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0}
-
-            for elem in batch_train_y:
-                samples_per_class[elem] += 1
-
-            samples_per_class = sorted(samples_per_class.items(), key=lambda kv: kv[1]) #type: ignore
-
-            print('Generating and saving Features Labels')
-            features_labels = (feature_extractor(batch_train_x), feature_extractor(batch_cv_x), feature_extractor(X_test))
-
-            X_train_extracted, X_cv_extracted, X_test_extracted = features_labels
-
-            if model_training_needed:
-                print('Starting Model training {} and saving model'.format(model_name))
-                if not fitted:
-                    print('Fitting initial model')
-                    model.fit(X_train_extracted, batch_train_y)
-                    fitted = True
-                else:
-                    for i in range(10):  # as partialfit is not as effective(max_iter=1), we can call it more than once for the same data
-                        model.partial_fit(X_train_extracted, batch_train_y, classes=use_classes)
-
-            print('Class distribution for batch is : {}'.format(samples_per_class))
-
-            print('Training set performance {}'.format(model.score(X_train_extracted, batch_train_y)))
-            cross_val_performance = model.score(X_cv_extracted, batch_cv_y)
-            # We can implement early stopping if we want, we currently don't
-            print('CrossVal set performance {}'.format(cross_val_performance))
-            print('Testing set performance {}'.format(model.score(X_test_extracted, y_test)))
-
-            predictions_from_testing = model.predict(X_test_extracted)
-
-            samples_per_class = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0}
-
-            for elem in predictions_from_testing:
-                samples_per_class[elem] += 1
-
-            samples_per_class = sorted(samples_per_class.items(), key=lambda kv: kv[1]) #type: ignore
-
-            print('Class distribution for testset prediction is : {}'.format(samples_per_class))
-
-            print('Sample predictions from testing {}'.format(predictions_from_testing[:20]))
-            print('Ground truth for        testing {}'.format(y_test[:20]))
-
-            if model_training_needed and cross_val_performance > best_cross_val_score:
-                print('Saving model with score {}'.format(cross_val_performance))
-                joblib.dump(model, full_model_path)
-                best_cross_val_score = cross_val_performance
-
 
     else:
         if os.path.exists(full_features_path):
@@ -271,7 +209,7 @@ if __name__ == '__main__':
             model.fit(X_train_extracted, y_train)
             joblib.dump(model, full_model_path)
 
-    if model_name != 'sgd_svc' and model_name != 'cnn':  # because if we used batchsize, this values dont really make sense
+    if model_name != 'cnn':  # because if we used batchsize, this values dont really make sense
         print('Training set performance {}'.format(model.score(X_train_extracted, y_train)))
         print('Testing set performance {}'.format(model.score(X_test_extracted, y_test)))
 
@@ -289,8 +227,8 @@ if __name__ == '__main__':
             str_label = str(model.predict(X_test_extracted[i:i + 1])[0])
         show_image(X_test[i], '{}-{}'.format(y_test[i], str_label))
 
-    test_idx = 1
-    reference_idx = 0
+    # Image to attack, currently not checking if this is classified correctly, it would be a good idea.
+    test_idx:int = 1
 
     # starting adversarial
     test_image = np.float32(X_test[test_idx])
@@ -304,7 +242,7 @@ if __name__ == '__main__':
     timeout = 5
 
     # TODO CHECK image values(where are there between 0 and 1, where 0 and 255 etc.)
-    #TODO targeted
+    # TODO targeted
     while adversarial is None and timeout >= 0:
         fmodel = FoolboxSklearnWrapper(bounds=(0, 255), channel_axis=2, feature_extractor=feature_extractor, predictor=model)
 

@@ -4,7 +4,7 @@ import numpy as np
 from skimage.feature import hog
 from skimage import exposure
 
-from configurations import n_features, vocab_size
+from configurations import n_features, vocab_size,gaussion_components,batch_size
 
 # initilize features to use
 sift = cv2.xfeatures2d.SIFT_create(nfeatures=n_features)
@@ -70,10 +70,14 @@ def initilize_fishervector_gmm(fv_gmm):
     global fishervector_gmm
     fishervector_gmm = fv_gmm
 
+def chunks(l, n):
+    """Yield successive n-sized chunks from l."""
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
 
 # http://www.vlfeat.org/api/fisher-fundamentals.html
 def fishervector_extractor(images):
-    training_features = np.zeros((images.shape[0],n_features,128)) # 128 because of sift
+    training_features = np.zeros((images.shape[0],n_features,128),dtype=np.float32) # 128 because of sift
 
     for idx,image in enumerate(images):
         _, desc = extract_sift_features(np.uint8(image))
@@ -82,7 +86,13 @@ def fishervector_extractor(images):
             desc = desc[:n_features]
             training_features[idx] = desc
 
-    fishervectors = fishervector_gmm.predict(training_features)  # (n_images, 2*n_kernels, n_feature_dim)
+    fishervectors = np.empty((images.shape[0],2*gaussion_components,128)) #(n_images, 2*n_kernels, n_feature_dim)
+    current_idx = 0
+    for batch in chunks(training_features,batch_size): #doing this in batches as doing it in one shot creates big memory problems
+        current_size = batch.shape[0]
+        fishervectors[current_idx:current_idx+current_size] = fishervector_gmm.predict(batch)
+        current_idx += current_size
+
     # TODO double check if flattening makes sense
     # flatten
     fishervectors = fishervectors.reshape((fishervectors.shape[0], -1))  # (n_images, 2*n_kernels * n_feature_dim)

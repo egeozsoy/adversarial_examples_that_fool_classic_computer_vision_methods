@@ -1,7 +1,7 @@
 from typing import List
 
 # should correspond to a configuration in custom_configurations
-configuration_name = 'svm_inria_bovw' #TODO continue with svm_inria_fisher
+configuration_name = 'cnn_imagenette'
 
 # Hyperparams, they(most of them) will be overwritten by a corresponding configuration, these values are just a guide line, or example
 vocab_size: int = 0
@@ -14,13 +14,11 @@ attack_name: str = 'BoundaryPlusPlus'
 visualize_sift: bool = False
 visualize_hog: bool = False
 image_size: int = 32 * 5
-
 use_classes: List[int] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-
 n_features: int = 0  # has no impact in this case
-
 gaussion_components: int = 0  # has no impcact in this case
-
 model_name: str = 'cnn'
 force_model_reload: bool = False
+
+# This overwrites the above defined hyperparameters with hyperparameters from custom_configurations
 exec('from custom_configurations.{} import *'.format(configuration_name))
