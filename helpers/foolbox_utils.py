@@ -25,7 +25,7 @@ class FoolboxSklearnWrapper(Model):
             predictions = self.predictor.predict(features)
         else:
             from helpers.keras_train import dropout_images
-            predictions = self.predictor.predict(dropout_images(images / 255))
+            predictions = self.predictor.predict(dropout_images((images / 255)-0.5))
         # convert the prediction to one hot
         one_hot_pred = np.zeros((images.shape[0], len(use_classes)))
         for idx, prediction in enumerate(predictions):

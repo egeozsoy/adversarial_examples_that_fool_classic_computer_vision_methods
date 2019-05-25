@@ -16,8 +16,9 @@ config.gpu_options.per_process_gpu_memory_fraction = 0.8
 set_session(tf.Session(config=config))
 
 def make_resnet_model():
-    model  = keras.applications.inception_v3.InceptionV3(include_top=True, weights=None, input_shape=X_shape[1:], classes=class_count)
-    # model  = keras.applications.resnet50(include_top=True, weights=None, input_shape=X_shape[1:], classes=class_count) # this also works but the file size is 3x and is slower
+    # model  = keras.applications.inception_v3.InceptionV3(include_top=True, weights=None, input_shape=X_shape[1:], classes=class_count)
+    # model  = keras.applications.resnet50.ResNet50(include_top=True, weights=None, input_shape=X_shape[1:], classes=class_count)
+    model = keras.applications.inception_resnet_v2.InceptionResNetV2(include_top=True, weights=None, input_shape=X_shape[1:], classes=class_count) # this works best
     opt = keras.optimizers.Adam(lr=0.001)
 
     model.compile(loss='categorical_crossentropy',
@@ -42,9 +43,9 @@ def get_keras_features_labels(X_train,X_cv, X_test, y_train, y_cv, y_test, n_cla
     y_test = keras.utils.to_categorical(y_test, n_classes)
 
     # zero mean unit variance
-    X_train_extracted = (X_train / 255)
-    X_cv_extracted = (X_cv / 255)
-    X_test_extracted = (X_test / 255)
+    X_train_extracted = (X_train / 255) - 0.5
+    X_cv_extracted = (X_cv / 255) - 0.5
+    X_test_extracted = (X_test / 255) - 0.5
 
     return X_train_extracted, X_cv_extracted, X_test_extracted, y_train, y_cv, y_test
 

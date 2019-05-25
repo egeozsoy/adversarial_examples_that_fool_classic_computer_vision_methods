@@ -13,7 +13,4 @@ forest_inria_bovw
 forest_imagenette_hog
 forest_imagenette_bovw
 cnn_inria
-
-
-TODO
 cnn_imagenette

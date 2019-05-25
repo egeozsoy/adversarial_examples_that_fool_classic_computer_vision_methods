@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import LinearSVC
-from sklearn.linear_model import LogisticRegression, SGDClassifier
+from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.externals import joblib
 import foolbox
@@ -180,6 +180,8 @@ if __name__ == '__main__':
         features_labels = get_keras_features_labels(batch_train_x, batch_cv_x, X_test, batch_train_y, batch_cv_y, y_test, len(use_classes))
         X_train_extracted, X_cv_extracted, batch_x_test_extract, batch_train_y, batch_cv_y, batch_test_y = features_labels
 
+        #TODO CHECK THE MEAN AND STD HERE AND ELSEWHERE, make sure training and test time correspond everywhere
+
         if model_training_needed:
             print('Starting Model training {} and saving model'.format(model_name))
             early_stopper = EarlyStopping(patience=20, verbose=1, restore_best_weights=True)
@@ -222,7 +224,7 @@ if __name__ == '__main__':
     # visualize some predictions
     for i in range(0):
         if model_name == 'cnn':
-            str_label = str(model.predict(X_test[i:i + 1])[0])
+            str_label = str(model.predict(X_test[i:i + 1])[0]) # TODO DOES THIS NEED NORMALIZATION?
         else:
             str_label = str(model.predict(X_test_extracted[i:i + 1])[0])
         show_image(X_test[i], '{}-{}'.format(y_test[i], str_label))

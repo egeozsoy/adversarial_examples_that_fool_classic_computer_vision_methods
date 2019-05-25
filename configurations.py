@@ -1,7 +1,7 @@
 from typing import List
 
 # should correspond to a configuration in custom_configurations
-configuration_name = 'cnn_imagenette'
+configuration_name = 'forest_imagenette_bovw'
 
 # Hyperparams, they(most of them) will be overwritten by a corresponding configuration, these values are just a guide line, or example
 vocab_size: int = 0
