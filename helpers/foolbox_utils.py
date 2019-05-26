@@ -34,13 +34,30 @@ class FoolboxSklearnWrapper(Model):
 
         return one_hot_pred
 
-
-def find_closest_reference_image(goal_img, reference_images, reference_labels, label):
+def find_closest_reference_image(goal_img, reference_images,reference_labels,reference_predictions, original_label,target_label=None):
     # finds the closes reference img to images, that still belongs to other class
-    maskout_correct_labels = reference_labels != label
-    ref_images_masked = reference_images[maskout_correct_labels]
+
+    # Make sure we leave only images which belong to our target class and are getting correctly predicted as such
+    if target_label is not None:
+        #targeted setting
+
+        mask_wanted_class = reference_predictions == target_label
+        mask_correctly_predicted = reference_predictions == reference_labels
+        mask = np.logical_and(mask_wanted_class,mask_correctly_predicted)
+
+    else:
+        #untargeted setting
+        mask_wanted_class = reference_predictions != original_label
+        mask_correctly_predicted = reference_predictions == reference_labels
+        mask = np.logical_and(mask_wanted_class, mask_correctly_predicted)
+
+    ref_images_masked = reference_images[mask]
     difference_metric = np.linalg.norm(np.reshape(ref_images_masked - goal_img, (ref_images_masked.shape[0], -1)), axis=1)
     most_similar_image:np.ndarray = ref_images_masked[np.argmin(difference_metric)]
+
+    for idx,i in enumerate(reference_images):
+        if np.all(i == most_similar_image):
+            print(i)
 
     # most_different_image = ref_images_masked[np.argmax(difference_metric)]
     # show_image(goal_img,'goal_img')

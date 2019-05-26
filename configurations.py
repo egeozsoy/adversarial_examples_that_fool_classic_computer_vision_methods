@@ -1,7 +1,7 @@
 from typing import List
 
 # should correspond to a configuration in custom_configurations
-configuration_name = 'forest_imagenette_bovw'
+configuration_name = 'svm_imagenette_bovw'
 
 # Hyperparams, they(most of them) will be overwritten by a corresponding configuration, these values are just a guide line, or example
 vocab_size: int = 0
@@ -19,6 +19,10 @@ n_features: int = 0  # has no impact in this case
 gaussion_components: int = 0  # has no impcact in this case
 model_name: str = 'cnn'
 force_model_reload: bool = False
+
+save_correct_predictions:bool = False
+targeted_attack:bool = True
+no_feature_reload:bool = True
 
 # This overwrites the above defined hyperparameters with hyperparameters from custom_configurations
 exec('from custom_configurations.{} import *'.format(configuration_name))
