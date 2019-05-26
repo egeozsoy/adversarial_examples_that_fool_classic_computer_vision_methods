@@ -246,7 +246,7 @@ if __name__ == '__main__':
     # TODO maybe it is a better idea to pick a random set for every model(one for each class or something like that),
     #  instead of relying on classes which are classified by all as correct
 
-        if save_correct_predictions:
+    if save_correct_predictions:
         # Create a list of correct predictions, so we can make sure every model predicts our end test set correctly
         correct_predictions = predictions_from_testing == y_test
         if os.path.exists(correct_predictions_file):
