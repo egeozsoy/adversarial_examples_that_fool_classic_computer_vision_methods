@@ -1,9 +1,10 @@
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
+from configurations import dataset_name,model_name,feature_extractor_name,targeted_attack
 
 
 def plot_result(image, adversarial):
+    import matplotlib.pyplot as plt
     image = image / 255
     adversarial = adversarial / 255
 
@@ -24,9 +25,13 @@ def plot_result(image, adversarial):
     difference = adversarial - image
     plt.imshow(difference / abs(difference).max() * 0.2 + 0.5)
     plt.axis('off')
-    plt.savefig('plot.png')
 
-    plt.show()
+    targeted_str: str = 'targeted' if targeted_attack else 'untargeted'
+    plt.savefig('{}_{}_{}_{}'.format(dataset_name, model_name, feature_extractor_name, targeted_str))
+
+    plt.close()
+
+    # plt.show()
 
 
 def revert_normalization(image, means, stds):

@@ -7,8 +7,6 @@ from typing import Optional, Any, Union, List
 import cv2
 import numpy as np
 from cv2.cv2 import BOWKMeansTrainer
-from keras.wrappers.scikit_learn import KerasClassifier
-from numpy.core._multiarray_umath import ndarray
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import LinearSVC
 from sklearn.linear_model import LogisticRegression
@@ -20,8 +18,12 @@ from fishervector import FisherVectorGMM
 # these will not be found automatically because of the way they are important, they can be ignored
 from configurations import vocab_size, data_size, image_size, batch_size, use_classes, n_features, gaussion_components, \
     feature_extractor_name, visualize_hog, \
-    visualize_sift, model_name, force_model_reload, dataset_name, attack_name, save_correct_predictions, targeted_attack, no_feature_reload
-from helpers.utils import filter_classes, get_balanced_batch
+    visualize_sift, model_name, force_model_reload, dataset_name, attack_name, save_correct_predictions, targeted_attack, no_feature_reload, \
+    correct_predictions_folder, correct_predictions_file,matplotlib_backend
+
+import matplotlib
+matplotlib.use(matplotlib_backend)
+from helpers.utils import filter_classes, get_balanced_batch, get_adversarial_test_set
 from helpers.image_utils import show_image, plot_result
 from helpers.feature_extractors import visualize_sift_points, hog_visualizer, get_feature_extractor, extract_sift_features, bow_extract, \
     initilize_fishervector_gmm
@@ -33,11 +35,10 @@ if __name__ == '__main__':
     vocs_folder: str = 'vocs'
     models_folder: str = 'models'
     features_folder: str = 'features'
-    correct_predictions_folder: str = 'correct_predictions'
-    correct_predictions_file: str = os.path.join(correct_predictions_folder, '{}_correct_predictions.npy'.format(dataset_name))
     evaluation_folder: str = 'evaluations'
     targeted_str: str = 'targeted' if targeted_attack else 'untargeted'
-    evaluation_config_folder: str = os.path.join(evaluation_folder, '{}_{}_{}_{}'.format(dataset_name, model_name, feature_extractor_name, targeted_str))
+    evaluation_config_str:str = '{}_{}_{}_{}'.format(dataset_name, model_name, feature_extractor_name, targeted_str)
+    evaluation_config_folder: str = os.path.join(evaluation_folder, evaluation_config_str)
 
     feature_extractor = get_feature_extractor(feature_extractor_name)
 
@@ -176,7 +177,7 @@ if __name__ == '__main__':
         from helpers.keras_train import get_keras_scikitlearn_model, get_keras_features_labels, dropout_images
         from keras.callbacks import EarlyStopping
 
-        model: KerasClassifier = get_keras_scikitlearn_model(X_train.shape, len(use_classes))
+        model = get_keras_scikitlearn_model(X_train.shape, len(use_classes))
     elif model_name == 'svc':
         model = LinearSVC()
     elif model_name == 'forest':
@@ -252,48 +253,40 @@ if __name__ == '__main__':
     # TODO maybe it is a better idea to pick a random set for every model(one for each class or something like that),
     #  instead of relying on classes which are classified by all as correct
     # TODO we can use get_balanced_batch for this
-    if save_correct_predictions:
-        # Create a list of correct predictions, so we can make sure every model predicts our end test set correctly
-        correct_predictions: np.bool = predictions_from_testing == y_test
-        if os.path.exists(correct_predictions_file):
-            all_correct_predictions = np.load(correct_predictions_file)
-            all_correct_predictions = np.concatenate([all_correct_predictions, correct_predictions[None, :]])
 
-        else:
-            all_correct_predictions = correct_predictions[None, :]
-        np.save(correct_predictions_file, all_correct_predictions)
-
-    all_correct_predictions = np.load(correct_predictions_file)
-    shared_correct_prediction_idx: Union[ndarray, bool] = np.all(all_correct_predictions, axis=0)
-
-    # We won't need this if we decide to pick target randomly as well
-    if os.path.exists('target_indices.pt'):
-        target_labels = pickle.load(open('target_indices.pt', 'rb'))
-        target_calculation_needed: bool = False
-
-    else:
-        target_labels = {}
-        target_calculation_needed = True
+    # TODO we can delete these okey
+    # # We won't need this if we decide to pick target randomly as well
+    # if os.path.exists('target_indices.pt'):
+    #     target_labels = pickle.load(open('target_indices.pt', 'rb'))
+    #     target_calculation_needed: bool = False
+    #
+    # else:
+    #     target_labels = {}
+    #     target_calculation_needed = True
 
     if targeted_attack:
         print('TARGETED ATTACK')
     else:
         print('UNTARGETED ATTACK')
 
+    adversarial_prediction_idx = get_adversarial_test_set(predictions_from_testing, y_test)
     # 2. Iterate over this data, and apply a targeted and untargeted attacks in case of imagenette, untargeted in case of inria(already binary)
     # TODO implemment for inria
-    for idx, test_idx in enumerate(np.where(shared_correct_prediction_idx == True)[0][1:]):
+    for idx, test_idx in enumerate(adversarial_prediction_idx):
         test_image = np.float32(X_test[test_idx])
         label = int(y_test[test_idx])
 
         # 3. The target label will be randomly picked from the remaining 9 classes ( currently we load if we so every model uses the same target.
         # If we use different data sets, this will become irrelevant)
-        if test_idx not in target_labels:
-            possible_target_classes: List[int] = [i for i in range(len(use_classes)) if i != label]
-            target_label: int = random.choice(possible_target_classes)
-            target_labels[test_idx] = target_label
-        else:
-            target_label = target_labels[test_idx]
+
+        # if test_idx not in target_labels:
+        possible_target_classes: List[int] = [i for i in range(len(use_classes)) if i != label]
+        target_label: int = random.choice(possible_target_classes)
+
+        #     TODO we can delete these probably
+        #     target_labels[test_idx] = target_label
+        # else:
+        #     target_label = target_labels[test_idx]
 
         # 4. Get a reference image, this should fullfill the following criterias: The image belongs to the target class, and is also classified as such
         # Among the many images that fullfill this criteria, we pick the image that has the least distance to the image we want to attack
@@ -319,7 +312,7 @@ if __name__ == '__main__':
 
         # 6. Run, results will be saved in a attack_log.csv file for every image
         try:
-            adversarial: Optional[Any] = attack(deepcopy(test_image), label, verbose=True, iterations=iter, starting_point=reference_image, max_queries=1000)
+            adversarial: Optional[Any] = attack(deepcopy(test_image), label, verbose=True, iterations=iter, starting_point=reference_image, max_queries=1000,log_name='attack_{}.csv'.format(evaluation_config_str))
 
         except Exception as e:
             print(e)
@@ -336,8 +329,8 @@ if __name__ == '__main__':
         if adversarial is not None:
             plot_result(np.float32(cv2.cvtColor(np.uint8(test_image), cv2.COLOR_RGB2BGR)), np.float32(cv2.cvtColor(np.uint8(adversarial), cv2.COLOR_RGB2BGR)))
 
-        os.rename('attack_log.csv', os.path.join(evaluation_config_folder, '{}_{}.csv'.format(idx, test_idx)))
+        os.rename('attack_{}.csv'.format(evaluation_config_str), os.path.join(evaluation_config_folder, '{}_{}.csv'.format(idx, test_idx)))
 
-    # TODO FIX THIS TypeError: file must have a 'write' attribute
+    # TODO if we are going to use this,fix TypeError: file must have a 'write' attribute
     # if target_calculation_needed:
     #     pickle.dump(target_labels, 'target_indices.pt')

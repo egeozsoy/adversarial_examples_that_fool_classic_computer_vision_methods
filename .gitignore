@@ -8,3 +8,5 @@ models/*
 *.png
 .mypy_cache/*
 evaluations/*
+starting_commands/*
+*.csv

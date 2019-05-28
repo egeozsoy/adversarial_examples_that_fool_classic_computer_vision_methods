@@ -1,7 +1,9 @@
 from typing import List
+import os
 
 # should correspond to a configuration in custom_configurations
-configuration_name = 'svm_imagenette_bovw'
+with open('active_configuration.txt','r') as f:
+    configuration_name = f.read().strip()
 
 # Hyperparams, they(most of them) will be overwritten by a corresponding configuration, these values are just a guide line, or example
 vocab_size: int = 0
@@ -21,8 +23,17 @@ model_name: str = 'cnn'
 force_model_reload: bool = False
 
 save_correct_predictions:bool = False
+matplotlib_backend = 'Agg'
 targeted_attack:bool = True
+
+if dataset_name == 'inria':
+    targeted_attack = False # it makes no sense to use targeted in binary classification
+
 no_feature_reload:bool = True
+adversarial_test_size:int = 20
+
+correct_predictions_folder: str = 'correct_predictions'
+correct_predictions_file: str = os.path.join(correct_predictions_folder, '{}_correct_predictions.npy'.format(dataset_name))
 
 # This overwrites the above defined hyperparameters with hyperparameters from custom_configurations
 exec('from custom_configurations.{} import *'.format(configuration_name))
