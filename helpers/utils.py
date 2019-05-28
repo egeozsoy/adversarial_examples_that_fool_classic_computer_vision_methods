@@ -1,5 +1,7 @@
 from typing import List,Tuple
 
+import os
+from matplotlib import pyplot as plt
 import numpy as np
 from sklearn.utils import shuffle
 
@@ -44,3 +46,25 @@ def get_balanced_batch(x:np.ndarray, y:np.ndarray, batch_size:int, classes:List[
     batch_cv_x, batch_cv_y = shuffle(batch_cv_x, batch_cv_y)
 
     return batch_train_x,batch_train_y,batch_cv_x, batch_cv_y
+
+
+def generate_graph_data(folder_name:str, file_count:int, max_queries:int):
+    graphs = np.zeros((file_count, max_queries))
+    for idx, f in enumerate(os.listdir(folder_name)):
+        points = np.loadtxt(os.path.join(folder_name, f), delimiter=',')
+        xp = points[:,1]
+        fp = points[:,2]
+        x = np.arange(1, max_queries+1)
+        graph = np.interp(x, xp, fp)
+        graphs[idx] = graph
+
+    mean_graph = graphs.mean(axis=0)
+    plt.plot(mean_graph)
+    plt.ylabel("mean of thresholds")
+    plt.xlabel("queries")
+    plt.savefig(os.path.join(folder_name,'graph'))
+
+
+
+if __name__ == '__main__':
+    generate_graph_data('evaluations/imagenette_svc_hog_extractor_targeted',25,1000)

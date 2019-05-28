@@ -2,8 +2,13 @@ import os
 from copy import deepcopy
 import pickle
 import random
+from typing import Optional, Any, Union, List
+
 import cv2
 import numpy as np
+from cv2.cv2 import BOWKMeansTrainer
+from keras.wrappers.scikit_learn import KerasClassifier
+from numpy.core._multiarray_umath import ndarray
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import LinearSVC
 from sklearn.linear_model import LogisticRegression
@@ -31,7 +36,8 @@ if __name__ == '__main__':
     correct_predictions_folder: str = 'correct_predictions'
     correct_predictions_file: str = os.path.join(correct_predictions_folder, '{}_correct_predictions.npy'.format(dataset_name))
     evaluation_folder: str = 'evaluations'
-    evaluation_config_folder: str = os.path.join(evaluation_folder, '{}_{}_{}'.format(dataset_name, model_name, feature_extractor_name))
+    targeted_str: str = 'targeted' if targeted_attack else 'untargeted'
+    evaluation_config_folder: str = os.path.join(evaluation_folder, '{}_{}_{}_{}'.format(dataset_name, model_name, feature_extractor_name, targeted_str))
 
     feature_extractor = get_feature_extractor(feature_extractor_name)
 
@@ -98,10 +104,10 @@ if __name__ == '__main__':
     if feature_extractor_name == 'bovw_extractor':
 
         if not os.path.exists(os.path.join(vocs_folder, 'voc_{}.npy'.format(iter_name))):
-            bow_train = cv2.BOWKMeansTrainer(vocab_size)
+            bow_train: BOWKMeansTrainer = cv2.BOWKMeansTrainer(vocab_size)
             # Fill bow with sift calculations
             print('Calculating Vocabulary for training images')
-            images_with_problems = 0
+            images_with_problems: int = 0
             for idx, train_image in enumerate(X_train):
 
                 kp, desc = extract_sift_features(train_image)
@@ -127,7 +133,7 @@ if __name__ == '__main__':
         if not os.path.exists(os.path.join(features_folder, 'fisherkernel_{}'.format(iter_name))):
             # Fill bow with sift calculations
             print('Calculating Sift Features for training images')
-            images_with_problems: int = 0
+            images_with_problems = 0
             training_features = None
             for idx, train_image in enumerate(X_train):
 
@@ -150,7 +156,7 @@ if __name__ == '__main__':
             print('Errors occurred for {} images'.format(images_with_problems))
 
             print('Calculating Fisher Kernel for training images')
-            fishervector_gmm = FisherVectorGMM(n_kernels=gaussion_components).fit(training_features)
+            fishervector_gmm: FisherVectorGMM = FisherVectorGMM(n_kernels=gaussion_components).fit(training_features)
 
             joblib.dump(fishervector_gmm, os.path.join(features_folder, 'fisherkernel_{}'.format(iter_name)))
 
@@ -162,15 +168,15 @@ if __name__ == '__main__':
 
     iter_name = '{}_gc_{}'.format(iter_name, gaussion_components)
     # Define where we should save
-    full_model_path = os.path.join(models_folder, '{}_{}'.format(model_name, iter_name))
-    full_features_path = os.path.join(features_folder, '{}_{}'.format(model_name, iter_name))
+    full_model_path: Union[bytes, str] = os.path.join(models_folder, '{}_{}'.format(model_name, iter_name))
+    full_features_path: Union[bytes, str] = os.path.join(features_folder, '{}_{}'.format(model_name, iter_name))
 
     # model selection
     if model_name == 'cnn':
         from helpers.keras_train import get_keras_scikitlearn_model, get_keras_features_labels, dropout_images
         from keras.callbacks import EarlyStopping
 
-        model = get_keras_scikitlearn_model(X_train.shape, len(use_classes))
+        model: KerasClassifier = get_keras_scikitlearn_model(X_train.shape, len(use_classes))
     elif model_name == 'svc':
         model = LinearSVC()
     elif model_name == 'forest':
@@ -181,7 +187,7 @@ if __name__ == '__main__':
         raise Exception('model_name not known')
 
     # model training
-    model_training_needed = True
+    model_training_needed: bool = True
     if os.path.exists(full_model_path) and not force_model_reload:
         print('Loading Model, not going to train')
         model = joblib.load(full_model_path)
@@ -197,7 +203,7 @@ if __name__ == '__main__':
 
         if model_training_needed:
             print('Starting Model training {} and saving model'.format(model_name))
-            early_stopper = EarlyStopping(patience=20, verbose=1, restore_best_weights=True)
+            early_stopper: EarlyStopping = EarlyStopping(patience=20, verbose=1, restore_best_weights=True)
 
             model.fit(dropout_images(X_train_extracted), batch_train_y, validation_data=(dropout_images(X_cv_extracted), batch_cv_y), callbacks=[early_stopper])
             joblib.dump(model, full_model_path)
@@ -236,7 +242,7 @@ if __name__ == '__main__':
     # visualize some predictions
     for i in range(0):
         if model_name == 'cnn':
-            str_label = str(model.predict((X_test[i:i + 1] / 255) - 0.5)[0])
+            str_label: str = str(model.predict((X_test[i:i + 1] / 255) - 0.5)[0])
         else:
             str_label = str(model.predict(X_test_extracted[i:i + 1])[0])
         show_image(X_test[i], '{}-{}'.format(y_test[i], str_label))
@@ -245,10 +251,10 @@ if __name__ == '__main__':
     # 1. From the testing set, pick N amount of images which are also classified correctly
     # TODO maybe it is a better idea to pick a random set for every model(one for each class or something like that),
     #  instead of relying on classes which are classified by all as correct
-
+    # TODO we can use get_balanced_batch for this
     if save_correct_predictions:
         # Create a list of correct predictions, so we can make sure every model predicts our end test set correctly
-        correct_predictions = predictions_from_testing == y_test
+        correct_predictions: np.bool = predictions_from_testing == y_test
         if os.path.exists(correct_predictions_file):
             all_correct_predictions = np.load(correct_predictions_file)
             all_correct_predictions = np.concatenate([all_correct_predictions, correct_predictions[None, :]])
@@ -258,20 +264,24 @@ if __name__ == '__main__':
         np.save(correct_predictions_file, all_correct_predictions)
 
     all_correct_predictions = np.load(correct_predictions_file)
-    shared_correct_prediction_idx = np.all(all_correct_predictions, axis=0)
+    shared_correct_prediction_idx: Union[ndarray, bool] = np.all(all_correct_predictions, axis=0)
 
     # We won't need this if we decide to pick target randomly as well
     if os.path.exists('target_indices.pt'):
-        target_labels = pickle.load('target_indices.pt')
-        target_calculation_needed = False
+        target_labels = pickle.load(open('target_indices.pt', 'rb'))
+        target_calculation_needed: bool = False
 
     else:
         target_labels = {}
         target_calculation_needed = True
 
+    if targeted_attack:
+        print('TARGETED ATTACK')
+    else:
+        print('UNTARGETED ATTACK')
 
     # 2. Iterate over this data, and apply a targeted and untargeted attacks in case of imagenette, untargeted in case of inria(already binary)
-    # TODO implemment for untargeted imagenette and inria
+    # TODO implemment for inria
     for idx, test_idx in enumerate(np.where(shared_correct_prediction_idx == True)[0][1:]):
         test_image = np.float32(X_test[test_idx])
         label = int(y_test[test_idx])
@@ -279,7 +289,7 @@ if __name__ == '__main__':
         # 3. The target label will be randomly picked from the remaining 9 classes ( currently we load if we so every model uses the same target.
         # If we use different data sets, this will become irrelevant)
         if test_idx not in target_labels:
-            possible_target_classes = [i for i in range(len(use_classes)) if i != label]
+            possible_target_classes: List[int] = [i for i in range(len(use_classes)) if i != label]
             target_label: int = random.choice(possible_target_classes)
             target_labels[test_idx] = target_label
         else:
@@ -299,7 +309,7 @@ if __name__ == '__main__':
 
         fmodel = FoolboxSklearnWrapper(bounds=(0, 255), channel_axis=2, feature_extractor=feature_extractor, predictor=model)
         if attack_name == 'BoundaryPlusPlus':
-            iter = 1000 # because max_queries will stop us
+            iter: int = 20  # because max_queries will stop us
             attack = foolbox.attacks.BoundaryAttackPlusPlus(model=fmodel, criterion=criterion)
         elif attack_name == 'Boundary':
             iter = 2000
@@ -309,7 +319,7 @@ if __name__ == '__main__':
 
         # 6. Run, results will be saved in a attack_log.csv file for every image
         try:
-            adversarial = attack(deepcopy(test_image), label, verbose=True, iterations=iter, starting_point=reference_image)
+            adversarial: Optional[Any] = attack(deepcopy(test_image), label, verbose=True, iterations=iter, starting_point=reference_image, max_queries=1000)
 
         except Exception as e:
             print(e)
@@ -328,5 +338,6 @@ if __name__ == '__main__':
 
         os.rename('attack_log.csv', os.path.join(evaluation_config_folder, '{}_{}.csv'.format(idx, test_idx)))
 
-    if target_calculation_needed:
-        pickle.dump(target_labels, 'target_indices.pt')
+    # TODO FIX THIS TypeError: file must have a 'write' attribute
+    # if target_calculation_needed:
+    #     pickle.dump(target_labels, 'target_indices.pt')

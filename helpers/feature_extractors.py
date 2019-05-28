@@ -1,6 +1,7 @@
 # just return flattened image
 import cv2
 import numpy as np
+from numpy.core._multiarray_umath import ndarray
 from skimage.feature import hog
 from skimage import exposure
 
@@ -70,14 +71,14 @@ def initilize_fishervector_gmm(fv_gmm):
     global fishervector_gmm
     fishervector_gmm = fv_gmm
 
-def chunks(l, n):
+def chunks(l, n: int):
     """Yield successive n-sized chunks from l."""
     for i in range(0, len(l), n):
         yield l[i:i + n]
 
 # http://www.vlfeat.org/api/fisher-fundamentals.html
-def fishervector_extractor(images):
-    training_features = np.zeros((images.shape[0],n_features,128),dtype=np.float32) # 128 because of sift
+def fishervector_extractor(images: ndarray) -> ndarray:
+    training_features: ndarray = np.zeros((images.shape[0],n_features,128),dtype=np.float32) # 128 because of sift
 
     for idx,image in enumerate(images):
         _, desc = extract_sift_features(np.uint8(image))
@@ -86,21 +87,20 @@ def fishervector_extractor(images):
             desc = desc[:n_features]
             training_features[idx] = desc
 
-    fishervectors = np.empty((images.shape[0],2*gaussion_components,128)) #(n_images, 2*n_kernels, n_feature_dim)
-    current_idx = 0
+    fishervectors: ndarray = np.empty((images.shape[0],2*gaussion_components,128)) #(n_images, 2*n_kernels, n_feature_dim)
+    current_idx: int = 0
     for batch in chunks(training_features,batch_size): #doing this in batches as doing it in one shot creates big memory problems
         current_size = batch.shape[0]
-        fishervectors[current_idx:current_idx+current_size] = fishervector_gmm.predict(batch)
+        fishervectors[current_idx:current_idx+current_size] = fishervector_gmm.predict(batch) #type: ignore
         current_idx += current_size
 
-    # TODO double check if flattening makes sense
     # flatten
     fishervectors = fishervectors.reshape((fishervectors.shape[0], -1))  # (n_images, 2*n_kernels * n_feature_dim)
 
     return fishervectors
 
 
-def get_feature_extractor(extractor_name):
+def get_feature_extractor(extractor_name: str):
     if extractor_name == 'bovw_extractor':
         return bovw_extractor
     elif extractor_name == 'hog_extractor':
