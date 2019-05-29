@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple,Dict
 import random
 import os
 
@@ -53,9 +53,9 @@ def get_balanced_batch(x: np.ndarray, y: np.ndarray, batch_size: int, classes: L
 def equally_distributed_indices(correct_indices, y: np.ndarray):
     needed_sample_per_class = adversarial_test_size // len(use_classes)  # make sure it is divideble
 
-    group_by_class = {}
+    group_by_class:Dict[int,List[int]] = {}
 
-    final_indices = []
+    final_indices:List[int] = []
 
     for correct_idx in correct_indices:
         element = y[correct_idx]
@@ -96,7 +96,7 @@ def get_adversarial_test_set(predictions_from_testing, y_test, all_predicted_cor
 
     else:
         # just return random correct predictions equally distrubited from testset
-        correct_predictions: np.bool = predictions_from_testing == y_test
+        correct_predictions = predictions_from_testing == y_test
         correct_prediction_idx = np.where(correct_predictions)[0]
 
         return equally_distributed_indices(correct_prediction_idx, y_test)
@@ -136,6 +136,8 @@ def generate_graph_data(folder_name: str, max_queries: int):
 
 if __name__ == '__main__':
     from matplotlib import pyplot as plt
+    import matplotlib.ticker as plticker
+
     legends = []
     mean_graphs = []
     for folder in os.listdir('evaluations'):
@@ -146,9 +148,15 @@ if __name__ == '__main__':
         legends.append(folder)
         mean_graphs.append(generate_graph_data(folder_path, 1000))
 
+    fig, ax = plt.subplots()
     for mean_graph in mean_graphs:
-        plt.plot(mean_graph)
+        ax.plot(mean_graph, linewidth=1.0)
+
+    loc_major = plticker.MultipleLocator(base=0.005)  # locator puts ticks at regular intervals
+    ax.yaxis.set_major_locator(loc_major)
+    loc_minor = plticker.MultipleLocator(base=0.0025)
+    ax.yaxis.set_minor_locator(loc_minor)
 
     plt.legend(legends)
+    ax.grid(which='both', alpha=0.3)
     plt.savefig('all_graphs')
-    # plt.show()
