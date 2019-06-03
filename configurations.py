@@ -24,7 +24,10 @@ force_model_reload: bool = False
 
 save_correct_predictions:bool = False
 matplotlib_backend = 'Agg'
-targeted_attack:bool = True
+targeted_attack:bool = False
+
+# This overwrites the above defined hyperparameters with hyperparameters from custom_configurations
+exec('from custom_configurations.{} import *'.format(configuration_name))
 
 if dataset_name == 'inria':
     targeted_attack = False # it makes no sense to use targeted in binary classification

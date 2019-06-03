@@ -271,65 +271,77 @@ if __name__ == '__main__':
 
     adversarial_prediction_idx = get_adversarial_test_set(predictions_from_testing, y_test)
     # 2. Iterate over this data, and apply a targeted and untargeted attacks in case of imagenette, untargeted in case of inria(already binary)
-    # TODO implemment for inria
+
+    skip_n_images = 0 # can be used if attack was interrupted like after 5 images
     for idx, test_idx in enumerate(adversarial_prediction_idx):
-        test_image = np.float32(X_test[test_idx])
-        label = int(y_test[test_idx])
 
-        # 3. The target label will be randomly picked from the remaining 9 classes ( currently we load if we so every model uses the same target.
-        # If we use different data sets, this will become irrelevant)
-
-        # if test_idx not in target_labels:
-        possible_target_classes: List[int] = [i for i in range(len(use_classes)) if i != label]
-        target_label: int = random.choice(possible_target_classes)
-
-        #     TODO we can delete these probably
-        #     target_labels[test_idx] = target_label
-        # else:
-        #     target_label = target_labels[test_idx]
-
-        # 4. Get a reference image, this should fullfill the following criterias: The image belongs to the target class, and is also classified as such
-        # Among the many images that fullfill this criteria, we pick the image that has the least distance to the image we want to attack
-        reference_image: np.ndarray = np.float32(find_closest_reference_image(test_image, X_test, y_test, predictions_from_testing, label, target_label))
-
-        # 5. Initilize attack type, also our model and criteria.
-        if targeted_attack:
-            criterion = foolbox.criteria.TargetClass(target_label)
-        else:
-            criterion = foolbox.criteria.Misclassification()
-
-        print('Image mean:{},std:{}'.format(test_image.mean(), test_image.std()))
-
-        fmodel = FoolboxSklearnWrapper(bounds=(0, 255), channel_axis=2, feature_extractor=feature_extractor, predictor=model)
-        if attack_name == 'BoundaryPlusPlus':
-            iter: int = 1000  # because max_queries will stop us
-            attack = foolbox.attacks.BoundaryAttackPlusPlus(model=fmodel, criterion=criterion)
-        elif attack_name == 'Boundary':
-            iter = 2000
-            attack = foolbox.attacks.BoundaryAttack(model=fmodel, criterion=criterion)
-        else:
-            raise Exception('ATTACK NOT KNOWN')
-
-        # 6. Run, results will be saved in a attack_log.csv file for every image
-        try:
-            adversarial: Optional[Any] = attack(deepcopy(test_image), label, verbose=True, iterations=iter, starting_point=reference_image, max_queries=1000,log_name='attack_{}.csv'.format(evaluation_config_str))
-
-        except Exception as e:
-            print(e)
+        if skip_n_images > 0:
+            print('skipping')
+            skip_n_images -= 1
             continue
 
-        # 7. Save the results appropiataly.
-        print('Original image predicted as {}'.format(label))
-        if model_name != 'cnn':
-            adv_label = model.predict(feature_extractor(np.array([adversarial])))[0]
-        else:
-            adv_label = int(model.predict(np.array([adversarial]))[0])
+        try:
+            test_image = np.float32(X_test[test_idx])
+            label = int(y_test[test_idx])
 
-        print('Adverserial image predicted as {}'.format(adv_label))
-        if adversarial is not None:
-            plot_result(np.float32(cv2.cvtColor(np.uint8(test_image), cv2.COLOR_RGB2BGR)), np.float32(cv2.cvtColor(np.uint8(adversarial), cv2.COLOR_RGB2BGR)))
+            # 3. The target label will be randomly picked from the remaining 9 classes ( currently we load if we so every model uses the same target.
+            # If we use different data sets, this will become irrelevant)
 
-        os.rename('attack_{}.csv'.format(evaluation_config_str), os.path.join(evaluation_config_folder, '{}_{}.csv'.format(idx, test_idx)))
+            # if test_idx not in target_labels:
+            possible_target_classes: List[int] = [i for i in range(len(use_classes)) if i != label]
+            target_label: int = random.choice(possible_target_classes)
+
+            #     TODO we can delete these probably
+            #     target_labels[test_idx] = target_label
+            # else:
+            #     target_label = target_labels[test_idx]
+
+            # 4. Get a reference image, this should fullfill the following criterias: The image belongs to the target class, and is also classified as such
+            # Among the many images that fullfill this criteria, we pick the image that has the least distance to the image we want to attack
+
+            if targeted_attack:
+                reference_image: np.ndarray = np.float32(find_closest_reference_image(test_image, X_test, y_test, predictions_from_testing, label, target_label))
+            else:
+                reference_image = np.float32(find_closest_reference_image(test_image, X_test, y_test, predictions_from_testing, label, None))
+
+            # 5. Initilize attack type, also our model and criteria.
+            if targeted_attack:
+                criterion = foolbox.criteria.TargetClass(target_label)
+            else:
+                criterion = foolbox.criteria.Misclassification()
+
+            print('Image mean:{},std:{}'.format(test_image.mean(), test_image.std()))
+
+            fmodel = FoolboxSklearnWrapper(bounds=(0, 255), channel_axis=2, feature_extractor=feature_extractor, predictor=model)
+            if attack_name == 'BoundaryPlusPlus':
+                iter: int = 1  # because max_queries will stop us
+                attack = foolbox.attacks.BoundaryAttackPlusPlus(model=fmodel, criterion=criterion)
+            elif attack_name == 'Boundary':
+                iter = 2000
+                attack = foolbox.attacks.BoundaryAttack(model=fmodel, criterion=criterion)
+            else:
+                raise Exception('ATTACK NOT KNOWN')
+
+            # 6. Run, results will be saved in a attack_log.csv file for every image
+            adversarial: Optional[Any] = attack(deepcopy(test_image), label, verbose=True, iterations=iter, starting_point=reference_image, max_queries=1000,log_name='attack_{}.csv'.format(evaluation_config_str))
+
+            # 7. Save the results appropiataly.
+            print('Original image predicted as {}'.format(label))
+            if model_name != 'cnn':
+                adv_label = model.predict(feature_extractor(np.array([adversarial])))[0]
+            else:
+                adv_label = int(model.predict(np.array([adversarial]))[0])
+
+            print('Adverserial image predicted as {}'.format(adv_label))
+            if adversarial is not None:
+                plot_result(np.float32(cv2.cvtColor(np.uint8(test_image), cv2.COLOR_RGB2BGR)), np.float32(cv2.cvtColor(np.uint8(adversarial), cv2.COLOR_RGB2BGR)))
+
+            os.rename('attack_{}.csv'.format(evaluation_config_str), os.path.join(evaluation_config_folder, '{}_{}.csv'.format(idx, test_idx)))
+
+        except Exception as e:
+            # if any errors occur, maybe because of the chosen target, skip that iteration
+            print(e)
+            continue
 
     # TODO if we are going to use this,fix TypeError: file must have a 'write' attribute
     # if target_calculation_needed:
