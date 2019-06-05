@@ -10,3 +10,4 @@ models/*
 evaluations/*
 starting_commands/*
 *.csv
+adversarial_images/*

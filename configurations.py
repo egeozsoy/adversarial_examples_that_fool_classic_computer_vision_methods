@@ -1,7 +1,7 @@
 from typing import List
 import os
 
-#Sample configuration names can be found in trained_configurations.txt
+# Sample configuration names can be found in trained_configurations.txt
 # should correspond to a configuration in custom_configurations folder
 with open('active_configuration.txt','r') as f:
     configuration_name = f.read().strip()
