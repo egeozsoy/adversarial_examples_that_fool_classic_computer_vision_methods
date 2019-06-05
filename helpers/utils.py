@@ -76,6 +76,7 @@ def equally_distributed_indices(correct_indices, y: np.ndarray):
 
 def get_adversarial_test_set(predictions_from_testing, y_test, all_predicted_correctly: bool = False):
     if all_predicted_correctly:
+        # TODO this requires fixing if we want to use
         if save_correct_predictions:
             # Create a list of correct predictions, so we can make sure every model predicts our end test set correctly
             correct_predictions: np.bool = predictions_from_testing == y_test
@@ -89,8 +90,6 @@ def get_adversarial_test_set(predictions_from_testing, y_test, all_predicted_cor
 
         all_correct_predictions = np.load(correct_predictions_file)
         shared_correct_prediction_idx = np.all(all_correct_predictions, axis=0)
-
-        # TODO this requires fixing if we want to use
 
         return shared_correct_prediction_idx
 
@@ -132,6 +131,11 @@ def generate_graph_data(folder_name: str, max_queries: int):
     plt.close()
 
     return mean_graph
+
+def create_folders(folder_names:List[str]):
+    for folder_name in folder_names:
+        if not os.path.exists(folder_name):
+            os.mkdir(folder_name)
 
 
 if __name__ == '__main__':

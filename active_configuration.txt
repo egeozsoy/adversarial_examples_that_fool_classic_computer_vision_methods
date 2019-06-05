@@ -1,1 +1,1 @@
-logreg_inria_hog
+svm_imagenette_hog-untargeted

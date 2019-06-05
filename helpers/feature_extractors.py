@@ -1,11 +1,16 @@
 # just return flattened image
+import os
+
 import cv2
+from cv2.cv2 import BOWKMeansTrainer
 import numpy as np
 from numpy.core._multiarray_umath import ndarray
 from skimage.feature import hog
 from skimage import exposure
+from sklearn.externals import joblib
+from fishervector import FisherVectorGMM
 
-from configurations import n_features, vocab_size,gaussion_components,batch_size
+from configurations import n_features, vocab_size, gaussion_components, batch_size
 
 # initilize features to use
 sift = cv2.xfeatures2d.SIFT_create(nfeatures=n_features)
@@ -45,6 +50,32 @@ def bovw_extractor(images):
     return bovws
 
 
+def prepare_bovw_vocabulary(X_train: np.array, vocs_folder: str, iter_name: str):
+    if not os.path.exists(os.path.join(vocs_folder, 'voc_{}.npy'.format(iter_name))):
+        bow_train: BOWKMeansTrainer = cv2.BOWKMeansTrainer(vocab_size)
+        # Fill bow with sift calculations
+        print('Calculating Vocabulary for training images')
+        images_with_problems: int = 0
+        for idx, train_image in enumerate(X_train):
+
+            kp, desc = extract_sift_features(train_image)
+            if desc is None:
+                images_with_problems += 1
+            else:
+                bow_train.add(desc)
+
+        print('No sift features were found for {} images'.format(images_with_problems))
+        print('Generating vocabulary by clustering')
+
+        voc = bow_train.cluster()
+        np.save(os.path.join(vocs_folder, 'voc_{}.npy'.format(iter_name)), voc)
+
+    else:
+        print('Loaded Vocabulary')
+        voc = np.load(os.path.join(vocs_folder, 'voc_{}.npy'.format(iter_name)))
+    bow_extract.setVocabulary(voc)
+
+
 def visualize_sift_points(image):
     kp, desc = extract_sift_features(image)
     gray = cv2.cvtColor(np.uint8(image), cv2.COLOR_RGB2GRAY)
@@ -71,33 +102,72 @@ def initilize_fishervector_gmm(fv_gmm):
     global fishervector_gmm
     fishervector_gmm = fv_gmm
 
+
 def chunks(l, n: int):
     """Yield successive n-sized chunks from l."""
     for i in range(0, len(l), n):
         yield l[i:i + n]
 
+
 # http://www.vlfeat.org/api/fisher-fundamentals.html
 def fishervector_extractor(images: ndarray) -> ndarray:
-    training_features: ndarray = np.zeros((images.shape[0],n_features,128),dtype=np.float32) # 128 because of sift
+    training_features: ndarray = np.zeros((images.shape[0], n_features, 128), dtype=np.float32)  # 128 because of sift
 
-    for idx,image in enumerate(images):
+    for idx, image in enumerate(images):
         _, desc = extract_sift_features(np.uint8(image))
 
-        if desc is not None and desc.shape[0] >= n_features: #else leave descriptors as np.zeros
+        if desc is not None and desc.shape[0] >= n_features:  # else leave descriptors as np.zeros
             desc = desc[:n_features]
             training_features[idx] = desc
 
-    fishervectors: ndarray = np.empty((images.shape[0],2*gaussion_components,128)) #(n_images, 2*n_kernels, n_feature_dim)
+    fishervectors: ndarray = np.empty((images.shape[0], 2 * gaussion_components, 128))  # (n_images, 2*n_kernels, n_feature_dim)
     current_idx: int = 0
-    for batch in chunks(training_features,batch_size): #doing this in batches as doing it in one shot creates big memory problems
+    for batch in chunks(training_features, batch_size):  # doing this in batches as doing it in one shot creates big memory problems
         current_size = batch.shape[0]
-        fishervectors[current_idx:current_idx+current_size] = fishervector_gmm.predict(batch) #type: ignore
+        fishervectors[current_idx:current_idx + current_size] = fishervector_gmm.predict(batch)  # type: ignore
         current_idx += current_size
 
     # flatten
     fishervectors = fishervectors.reshape((fishervectors.shape[0], -1))  # (n_images, 2*n_kernels * n_feature_dim)
 
     return fishervectors
+
+
+def prepare_fishervector_gmm(X_train, features_folder, iter_name):
+    if not os.path.exists(os.path.join(features_folder, 'fisherkernel_{}'.format(iter_name))):
+        # Fill bow with sift calculations
+        print('Calculating Sift Features for training images')
+        images_with_problems = 0
+        training_features = None
+        for idx, train_image in enumerate(X_train):
+
+            kp, desc = extract_sift_features(train_image)
+
+            # sometimes, sift extracts less than it is suppose to
+            if desc is None or desc.shape[0] < n_features:
+                images_with_problems += 1
+            else:
+                desc = desc[:n_features]
+                desc = np.expand_dims(desc, axis=0).astype(np.float32)  # increase this if more accuracy is required
+                if training_features is None:
+                    training_features = desc
+                else:
+                    training_features = np.concatenate([training_features, desc], axis=0)
+
+        # Generally errors occur if less than the requested amount of sift features were found per image,
+        # in training time, we ignore these images, in test time, we use zero vector to represent these images.
+        # Obviously makes it impossible to predict that image, so we want to choose a n_features count for sift that minimizes this error, while still giving good results.
+        print('Errors occurred for {} images'.format(images_with_problems))
+
+        print('Calculating Fisher Kernel for training images')
+        fishervector_gmm: FisherVectorGMM = FisherVectorGMM(n_kernels=gaussion_components).fit(training_features)
+
+        joblib.dump(fishervector_gmm, os.path.join(features_folder, 'fisherkernel_{}'.format(iter_name)))
+
+    else:
+        print('Loaded Fisher Kernel')
+        fishervector_gmm = joblib.load(os.path.join(features_folder, 'fisherkernel_{}'.format(iter_name)))
+    initilize_fishervector_gmm(fishervector_gmm)
 
 
 def get_feature_extractor(extractor_name: str):

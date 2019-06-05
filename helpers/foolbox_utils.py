@@ -37,7 +37,7 @@ class FoolboxSklearnWrapper(Model):
 
         return one_hot_pred
 
-def find_closest_reference_image(goal_img: ndarray, reference_images: ndarray, reference_labels: ndarray, reference_predictions: ndarray, original_label: int,
+def find_closest_reference_image(attacked_img: ndarray, reference_images: ndarray, reference_labels: ndarray, reference_predictions: ndarray, original_label: int,
                                  target_label: int = None):
     # finds the closes reference img to images, that still belongs to other class
 
@@ -56,7 +56,7 @@ def find_closest_reference_image(goal_img: ndarray, reference_images: ndarray, r
         mask = np.logical_and(mask_wanted_class, mask_correctly_predicted)
 
     ref_images_masked = reference_images[mask]
-    difference_metric = np.linalg.norm(np.reshape(ref_images_masked - goal_img, (ref_images_masked.shape[0], -1)), axis=1)
+    difference_metric = np.linalg.norm(np.reshape(ref_images_masked - attacked_img, (ref_images_masked.shape[0], -1)), axis=1)
     most_similar_image:np.ndarray = ref_images_masked[np.argmin(difference_metric)]
 
     # most_different_image = ref_images_masked[np.argmax(difference_metric)]

@@ -1,7 +1,8 @@
 from typing import List
 import os
 
-# should correspond to a configuration in custom_configurations
+#Sample configuration names can be found in trained_configurations.txt
+# should correspond to a configuration in custom_configurations folder
 with open('active_configuration.txt','r') as f:
     configuration_name = f.read().strip()
 
@@ -24,7 +25,9 @@ force_model_reload: bool = False
 
 save_correct_predictions:bool = False
 matplotlib_backend = 'Agg'
-targeted_attack:bool = False
+
+configuration_name,target_mode = configuration_name.rsplit('-') # seperate targeted or untargeted from configuration_name
+targeted_attack:bool = target_mode == 'targeted' # set targeted_attack parameter based on the information from the model name
 
 # This overwrites the above defined hyperparameters with hyperparameters from custom_configurations
 exec('from custom_configurations.{} import *'.format(configuration_name))
