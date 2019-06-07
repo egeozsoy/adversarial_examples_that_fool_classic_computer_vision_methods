@@ -13,7 +13,6 @@ batch_size: int = 11000
 dataset_name: str = 'imagenette'
 input_dropout: bool = False
 feature_extractor_name: str = ''
-attack_name: str = 'BoundaryPlusPlus'
 visualize_sift: bool = False
 visualize_hog: bool = False
 image_size: int = 32 * 5
@@ -36,7 +35,7 @@ if dataset_name == 'inria':
     targeted_attack = False # it makes no sense to use targeted in binary classification
 
 no_feature_reload:bool = True
-adversarial_test_size:int = 20
+adversarial_test_size:int = 100
 
 correct_predictions_folder: str = 'correct_predictions'
 correct_predictions_file: str = os.path.join(correct_predictions_folder, '{}_correct_predictions.npy'.format(dataset_name))

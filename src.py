@@ -15,7 +15,7 @@ import foolbox
 # these will not be found automatically because of the way they are important, they can be ignored
 from configurations import vocab_size, data_size, image_size, batch_size, use_classes, n_features, gaussion_components, \
     feature_extractor_name, visualize_hog, \
-    visualize_sift, model_name, force_model_reload, dataset_name, attack_name, targeted_attack, no_feature_reload, \
+    visualize_sift, model_name, force_model_reload, dataset_name, targeted_attack, no_feature_reload, \
     correct_predictions_folder, matplotlib_backend
 
 import matplotlib
@@ -34,15 +34,17 @@ if __name__ == '__main__':
     models_folder: str = 'models'
     features_folder: str = 'features'
     evaluation_folder: str = 'evaluations'
-    adversarial_images_folder:str = 'adversarial_images'
+    adversarial_images_folder: str = 'adversarial_images'
     targeted_str: str = 'targeted' if targeted_attack else 'untargeted'
     evaluation_config_str: str = '{}_{}_{}_{}'.format(dataset_name, model_name, feature_extractor_name, targeted_str)
     evaluation_config_folder: str = os.path.join(evaluation_folder, evaluation_config_str)
-    adversarial_images_config_folder = os.path.join(adversarial_images_folder,evaluation_config_str)
+    adversarial_images_config_folder = os.path.join(adversarial_images_folder, evaluation_config_str)
 
     feature_extractor = get_feature_extractor(feature_extractor_name)
 
-    create_folders([vocs_folder, models_folder, features_folder, correct_predictions_folder, evaluation_folder, evaluation_config_folder,adversarial_images_folder,adversarial_images_config_folder])
+    create_folders(
+        [vocs_folder, models_folder, features_folder, correct_predictions_folder, evaluation_folder, evaluation_config_folder, adversarial_images_folder,
+         adversarial_images_config_folder])
 
     iter_name: str = 'iter_dtn_{}_vs{}_ds{}_is{}_cc{}_nf{}_fe_{}'.format(dataset_name, vocab_size, data_size, image_size, len(use_classes), n_features,
                                                                          feature_extractor.__name__)
@@ -57,8 +59,7 @@ if __name__ == '__main__':
     if image_size != X.shape[1]:
         X = np.array([cv2.resize(img, (image_size, image_size)) for img in X])
 
-    # TODO Increase testsize maybe, this would require all models to be retrained!
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.05, shuffle=True, random_state=0)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True, random_state=0)
 
     X_train = X_train[:data_size]
     X_test = X_test[:data_size]
@@ -182,6 +183,7 @@ if __name__ == '__main__':
     # 2. Iterate over this data, and apply an attack
     skip_n_images = 0  # can be used if attack was interrupted eg. after 5 images. Set this value to 5 to skip the first 5 images in the next run
 
+    #TODO should we try parallesing this?
     for idx, test_idx in enumerate(adversarial_prediction_idx):
 
         if skip_n_images > 0:
@@ -218,20 +220,15 @@ if __name__ == '__main__':
             print('Image mean:{},std:{}'.format(test_image.mean(), test_image.std()))
 
             fmodel = FoolboxSklearnWrapper(bounds=(0, 255), channel_axis=2, feature_extractor=feature_extractor, predictor=model)
-            if attack_name == 'BoundaryPlusPlus':
-                iter: int = 1000  # max_queries will stop us before the iterations
-                attack = foolbox.attacks.BoundaryAttackPlusPlus(model=fmodel, criterion=criterion)
+            iter: int = 1000  # max_queries will stop us before the iterations
+            attack = foolbox.attacks.BoundaryAttackPlusPlus(model=fmodel, criterion=criterion)
 
-            # If we use just one attack at the end, no need to write code to differentiate between them.
-            elif attack_name == 'Boundary':
-                iter = 2000
-                attack = foolbox.attacks.BoundaryAttack(model=fmodel, criterion=criterion)
-            else:
-                raise Exception('ATTACK NOT KNOWN')
+            # TODO try BATCHSIZE 1
+            # threshold 0.003 is a good limit
 
             # 6. Run, results will be saved in a attack_{}.csv file for every image, with the corresponding config_str name
             adversarial: Optional[Any] = attack(deepcopy(test_image), label, verbose=True, iterations=iter, starting_point=reference_image, max_queries=1000,
-                                                log_name='attack_{}.csv'.format(evaluation_config_str))
+                                                log_name='attack_{}.csv'.format(evaluation_config_str),batch_size=1)
 
             # 7. Save the results.
             print('Original image predicted as {}'.format(label))
@@ -242,10 +239,10 @@ if __name__ == '__main__':
 
             print('Adverserial image predicted as {}'.format(adv_label))
 
-            save_name = os.path.join(adversarial_images_config_folder,'{}_{}'.format(evaluation_config_str,idx))
+            save_name = os.path.join(adversarial_images_config_folder, '{}_{}'.format(evaluation_config_str, idx))
             if adversarial is not None:
                 plot_result(np.float32(cv2.cvtColor(np.uint8(test_image), cv2.COLOR_RGB2BGR)),
-                            np.float32(cv2.cvtColor(np.uint8(adversarial), cv2.COLOR_RGB2BGR)),save_name)
+                            np.float32(cv2.cvtColor(np.uint8(adversarial), cv2.COLOR_RGB2BGR)), save_name)
 
             os.rename('attack_{}.csv'.format(evaluation_config_str), os.path.join(evaluation_config_folder, '{}_{}.csv'.format(idx, test_idx)))
 

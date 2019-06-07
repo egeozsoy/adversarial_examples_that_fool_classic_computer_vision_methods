@@ -5,7 +5,6 @@ batch_size = 2000
 input_dropout = False # has no impact
 dataset_name = 'imagenette'
 feature_extractor_name = 'fishervector_extractor'
-attack_name = 'BoundaryPlusPlus'
 visualize_sift = False
 visualize_hog = False
 image_size = 32 * 5

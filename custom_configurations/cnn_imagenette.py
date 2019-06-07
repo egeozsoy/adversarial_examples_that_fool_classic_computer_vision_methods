@@ -7,7 +7,6 @@ batch_size: int = 11000
 dataset_name: str = 'imagenette'
 input_dropout: bool = False
 feature_extractor_name: str = ''
-attack_name: str = 'BoundaryPlusPlus'
 visualize_sift: bool = False
 visualize_hog: bool = False
 image_size: int = 32 * 5

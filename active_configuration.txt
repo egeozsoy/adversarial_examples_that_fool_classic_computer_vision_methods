@@ -1,1 +1,1 @@
-svm_imagenette_hog-untargeted
+svm_imagenette_bovw-targeted

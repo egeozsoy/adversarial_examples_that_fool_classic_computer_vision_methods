@@ -142,9 +142,20 @@ if __name__ == '__main__':
     from matplotlib import pyplot as plt
     import matplotlib.ticker as plticker
 
+    filtering_keywords = ['inria','_untargeted']
+
     legends = []
     mean_graphs = []
     for folder in os.listdir('evaluations'):
+        # skip folder based on filtering keywords
+        skip_folder = False
+        for keyword in filtering_keywords:
+            if keyword not in folder:
+                skip_folder = True
+                break
+
+        if skip_folder:
+            continue
         folder_path = os.path.join('evaluations', folder)
         if not os.path.isdir(folder_path):
             continue
@@ -163,4 +174,4 @@ if __name__ == '__main__':
 
     plt.legend(legends)
     ax.grid(which='both', alpha=0.3)
-    plt.savefig('all_graphs')
+    plt.savefig('all_graphs_{}'.format(', '.join(filtering_keywords)))

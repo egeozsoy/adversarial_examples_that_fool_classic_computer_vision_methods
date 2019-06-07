@@ -7,7 +7,6 @@ batch_size: int = 2200
 dataset_name: str = 'inria'
 input_dropout: bool = False
 feature_extractor_name: str = ''
-attack_name: str = 'BoundaryPlusPlus'
 visualize_sift: bool = False
 visualize_hog: bool = False
 image_size: int = 32 * 5
