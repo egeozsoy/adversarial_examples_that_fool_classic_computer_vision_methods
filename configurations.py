@@ -35,6 +35,7 @@ if dataset_name == 'inria':
     targeted_attack = False # it makes no sense to use targeted in binary classification
 
 no_feature_reload:bool = True
+just_train:bool = True
 adversarial_test_size:int = 100
 
 correct_predictions_folder: str = 'correct_predictions'
