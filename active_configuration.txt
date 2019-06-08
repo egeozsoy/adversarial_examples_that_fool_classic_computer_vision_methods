@@ -1,1 +1,1 @@
-svm_imagenette_bovw-targeted
+cnn_inria-untargeted

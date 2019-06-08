@@ -3,7 +3,7 @@ from typing import List
 # Hyperparams
 vocab_size: int = 0  # has no impact
 data_size: int = 20000
-batch_size: int = 2200
+batch_size: int = 1900
 dataset_name: str = 'inria'
 input_dropout: bool = False
 feature_extractor_name: str = ''

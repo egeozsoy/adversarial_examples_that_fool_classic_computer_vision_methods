@@ -192,7 +192,7 @@ if __name__ == '__main__':
 
         if model_training_needed:
             print('Starting Model training {} and saving model'.format(model_name))
-            early_stopper: EarlyStopping = EarlyStopping(patience=20, verbose=1, restore_best_weights=True)
+            early_stopper: EarlyStopping = EarlyStopping(patience=40, verbose=1, restore_best_weights=True)
 
             model.fit(dropout_images(X_train_extracted), batch_train_y, validation_data=(dropout_images(X_cv_extracted), batch_cv_y), callbacks=[early_stopper])
             joblib.dump(model, full_model_path)
