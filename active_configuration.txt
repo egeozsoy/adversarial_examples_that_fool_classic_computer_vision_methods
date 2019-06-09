@@ -1,1 +1,1 @@
-cnn_inria-untargeted
+svm_inria_fisher-untargeted

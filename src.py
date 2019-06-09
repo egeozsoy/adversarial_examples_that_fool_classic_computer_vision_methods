@@ -65,7 +65,7 @@ def attack_image(idx, test_idx):
         iter: int = 100000  # max_queries will stop us before the iterations
         attack = foolbox.attacks.BoundaryAttackPlusPlus(model=fmodel, criterion=criterion)
 
-        # TODO try BATCHSIZE 1
+        # currently using batchsize 1 for more realistic testing, but some models might profit from bigger batches
         # threshold 0.003 is a good limit
 
         # 6. Run, results will be saved in a attack_{}.csv file for every image, with the corresponding config_str name
@@ -94,6 +94,12 @@ def attack_image(idx, test_idx):
 
 
 if __name__ == '__main__':
+
+    # Avoid opencv multiprocessing bug that occurs when attacking with multiple processes. We can still use more threads if we are only training
+    # https://github.com/opencv/opencv/issues/5150
+    if not just_train:
+        cv2.setNumThreads(0)
+
 
     vocs_folder: str = 'vocs'
     models_folder: str = 'models'
@@ -249,7 +255,7 @@ if __name__ == '__main__':
         skip_n_images = 0  # can be used if attack was interrupted eg. after 5 images. Set this value to 5 to skip the first 5 images in the next run
 
         # Run attack in parallel
-        p = Pool(6)
+        p = Pool(10)
         numbers = [i for i in range(len(adversarial_prediction_idx))]
-
+        # Starmap to feed more than one value
         p.starmap(attack_image, zip(numbers, adversarial_prediction_idx))
