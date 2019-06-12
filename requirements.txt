@@ -15,3 +15,4 @@ tensorflow-gpu==1.9.0
 scikit-image
 fishervector
 mypy
+plaidml-keras

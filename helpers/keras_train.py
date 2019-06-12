@@ -2,6 +2,14 @@ from copy import deepcopy
 
 import numpy as np
 
+from .utils import gpu_available
+
+if not gpu_available():
+    import os
+    # we can use plaidml to accelerate local training(support for amd gpus)
+    print('Switching to PlaidML, because no GPU was found')
+    os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
+
 import keras
 from keras.wrappers.scikit_learn import KerasClassifier
 import tensorflow as tf

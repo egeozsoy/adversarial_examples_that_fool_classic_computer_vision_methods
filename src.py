@@ -67,6 +67,7 @@ def attack_image(idx, test_idx):
 
         # currently using batchsize 1 for more realistic testing, but some models might profit from bigger batches
         # threshold 0.003 is a good limit
+        # maybe play around with the query limit
 
         # 6. Run, results will be saved in a attack_{}.csv file for every image, with the corresponding config_str name
         adversarial: Optional[Any] = attack(deepcopy(test_image), label, verbose=True, iterations=iter, starting_point=reference_image, max_queries=10000,
@@ -152,7 +153,6 @@ if __name__ == '__main__':
             show_image(X_train[a])
             hog_visualizer(X_train[a])
 
-    # TODO test if these two still work correctly
     # bovw training
     if feature_extractor_name == 'bovw_extractor':
         prepare_bovw_vocabulary(X_train, vocs_folder, iter_name)
@@ -249,13 +249,20 @@ if __name__ == '__main__':
         else:
             print('UNTARGETED ATTACK')
 
-        adversarial_prediction_idx = get_adversarial_test_set(predictions_from_testing, y_test)
+        adversarial_prediction_indices = get_adversarial_test_set(predictions_from_testing, y_test)
 
         # 2. Iterate over this data, and apply an attack
         skip_n_images = 0  # can be used if attack was interrupted eg. after 5 images. Set this value to 5 to skip the first 5 images in the next run
 
-        # Run attack in parallel
-        p = Pool(10)
-        numbers = [i for i in range(len(adversarial_prediction_idx))]
-        # Starmap to feed more than one value
-        p.starmap(attack_image, zip(numbers, adversarial_prediction_idx))
+        numbers = [i for i in range(len(adversarial_prediction_indices))]
+        # Cnn already uses all available resources, don't paralellise it
+        if model_name != 'cnn':
+            # Run attack in parallel
+            p = Pool(10)
+            # Starmap to feed more than one value
+            p.starmap(attack_image, zip(numbers, adversarial_prediction_indices))
+
+        else:
+            # Run attack sequentially
+            for number,adversarial_prediction_idx in zip(numbers,adversarial_prediction_indices):
+                attack_image(number,adversarial_prediction_idx)

@@ -8,6 +8,14 @@ from sklearn.utils import shuffle
 from configurations import save_correct_predictions, correct_predictions_file, use_classes, adversarial_test_size
 
 
+def gpu_available():
+    from tensorflow.python.client import device_lib
+    local_device_protos = device_lib.list_local_devices()
+    for x in local_device_protos:
+        if x.device_type == 'GPU':
+            return True
+    return False
+
 # delete classes that are not in keep_classes, simplify cifar-10
 def filter_classes(X: np.ndarray, y: np.ndarray, keep_classes: List[int]) -> Tuple[np.ndarray, np.ndarray]:
     logic_result = y == keep_classes[0]
