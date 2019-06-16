@@ -70,7 +70,7 @@ def attack_image(idx, test_idx):
         # maybe play around with the query limit
 
         # 6. Run, results will be saved in a attack_{}.csv file for every image, with the corresponding config_str name
-        adversarial: Optional[Any] = attack(deepcopy(test_image), label, verbose=True, iterations=iter, starting_point=reference_image, max_queries=10000,
+        adversarial: Optional[Any] = attack(deepcopy(test_image), label, verbose=True, iterations=iter, starting_point=reference_image, max_queries=50000,
                                             log_name='attack_{}_{}.csv'.format(evaluation_config_str, idx), batch_size=1)
 
         # 7. Save the results.

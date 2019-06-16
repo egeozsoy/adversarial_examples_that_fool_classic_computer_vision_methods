@@ -150,7 +150,7 @@ if __name__ == '__main__':
     from matplotlib import pyplot as plt
     import matplotlib.ticker as plticker
 
-    filtering_keywords = ['inria','_untargeted']
+    filtering_keywords = ['imagenette','_untargeted']
 
     legends = []
     mean_graphs = []
