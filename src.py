@@ -258,7 +258,7 @@ if __name__ == '__main__':
         # Cnn already uses all available resources, don't paralellise it
         if model_name != 'cnn':
             # Run attack in parallel
-            p = Pool(10)
+            p = Pool(8)
             # Starmap to feed more than one value
             p.starmap(attack_image, zip(numbers, adversarial_prediction_indices))
 
