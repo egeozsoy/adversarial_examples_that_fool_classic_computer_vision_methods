@@ -37,6 +37,7 @@ if dataset_name == 'inria':
 no_feature_reload:bool = True
 just_train:bool = False
 adversarial_test_size:int = 100
+max_queries:int = 25000
 
 correct_predictions_folder: str = 'correct_predictions'
 correct_predictions_file: str = os.path.join(correct_predictions_folder, '{}_correct_predictions.npy'.format(dataset_name))

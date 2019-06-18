@@ -17,7 +17,7 @@ import foolbox
 from configurations import vocab_size, data_size, image_size, batch_size, use_classes, n_features, gaussion_components, \
     feature_extractor_name, visualize_hog, \
     visualize_sift, model_name, force_model_reload, dataset_name, targeted_attack, no_feature_reload, \
-    matplotlib_backend,just_train
+    matplotlib_backend,just_train,max_queries
 
 import matplotlib
 
@@ -70,7 +70,7 @@ def attack_image(idx, test_idx):
         # maybe play around with the query limit
 
         # 6. Run, results will be saved in a attack_{}.csv file for every image, with the corresponding config_str name
-        adversarial: Optional[Any] = attack(deepcopy(test_image), label, verbose=True, iterations=iter, starting_point=reference_image, max_queries=50000,
+        adversarial: Optional[Any] = attack(deepcopy(test_image), label, verbose=True, iterations=iter, starting_point=reference_image, max_queries=max_queries,
                                             log_name='attack_{}_{}.csv'.format(evaluation_config_str, idx), batch_size=1)
 
         # 7. Save the results.
@@ -258,7 +258,7 @@ if __name__ == '__main__':
         # Cnn already uses all available resources, don't paralellise it
         if model_name != 'cnn':
             # Run attack in parallel
-            p = Pool(8)
+            p = Pool(12)
             # Starmap to feed more than one value
             p.starmap(attack_image, zip(numbers, adversarial_prediction_indices))
 

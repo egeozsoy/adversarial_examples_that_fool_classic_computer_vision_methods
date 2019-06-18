@@ -5,7 +5,7 @@ import os
 import numpy as np
 from sklearn.utils import shuffle
 
-from configurations import save_correct_predictions, correct_predictions_file, use_classes, adversarial_test_size
+from configurations import save_correct_predictions, correct_predictions_file, use_classes, adversarial_test_size,max_queries
 
 
 def gpu_available():
@@ -150,7 +150,7 @@ if __name__ == '__main__':
     from matplotlib import pyplot as plt
     import matplotlib.ticker as plticker
 
-    filtering_keywords = ['imagenette','_untargeted']
+    filtering_keywords = ['inria','_untargeted']
 
     legends = []
     mean_graphs = []
@@ -169,7 +169,7 @@ if __name__ == '__main__':
             continue
 
         legends.append(folder)
-        mean_graphs.append(generate_graph_data(folder_path, 1000))
+        mean_graphs.append(generate_graph_data(folder_path, max_queries))
 
     fig, ax = plt.subplots()
     for mean_graph in mean_graphs:
