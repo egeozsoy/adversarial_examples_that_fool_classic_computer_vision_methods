@@ -1,1 +1,1 @@
-svm_inria_fisher-untargeted
+svm_inria_hog-untargeted

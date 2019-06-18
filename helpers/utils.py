@@ -129,7 +129,7 @@ def generate_graph_data(folder_name: str, max_queries: int):
 
     if graphs is None:
         return
-    mean_graph = graphs.mean(axis=0)
+    mean_graph = np.median(graphs,axis=0)
     np.save(os.path.join(folder_name, 'mean_graph.npy'), mean_graph)
 
     plt.plot(mean_graph)

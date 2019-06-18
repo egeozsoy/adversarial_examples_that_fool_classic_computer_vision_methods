@@ -2,7 +2,7 @@ import os
 from copy import deepcopy
 import random
 from typing import Optional, Any, Union, List
-from multiprocessing import Pool
+from multiprocessing import Pool,cpu_count
 
 import cv2
 import numpy as np
@@ -258,7 +258,7 @@ if __name__ == '__main__':
         # Cnn already uses all available resources, don't paralellise it
         if model_name != 'cnn':
             # Run attack in parallel
-            p = Pool(12)
+            p = Pool(cpu_count())
             # Starmap to feed more than one value
             p.starmap(attack_image, zip(numbers, adversarial_prediction_indices))
 
