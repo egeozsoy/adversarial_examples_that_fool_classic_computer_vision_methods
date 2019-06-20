@@ -157,11 +157,11 @@ if __name__ == '__main__':
     if feature_extractor_name == 'bovw_extractor':
         prepare_bovw_vocabulary(X_train, vocs_folder, iter_name)
 
+    iter_name = '{}_gc_{}'.format(iter_name, gaussion_components)
     # fisher kernel training
-    elif feature_extractor_name == 'fishervector_extractor':
+    if feature_extractor_name == 'fishervector_extractor':
         prepare_fishervector_gmm(X_train, features_folder, iter_name)
 
-    iter_name = '{}_gc_{}'.format(iter_name, gaussion_components)
     # Define where we should save
     full_model_path: Union[bytes, str] = os.path.join(models_folder, '{}_{}'.format(model_name, iter_name))
     full_features_path: Union[bytes, str] = os.path.join(features_folder, '{}_{}'.format(model_name, iter_name))

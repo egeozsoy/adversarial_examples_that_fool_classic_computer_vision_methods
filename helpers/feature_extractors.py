@@ -8,6 +8,8 @@ from numpy.core._multiarray_umath import ndarray
 from skimage.feature import hog
 from skimage import exposure
 from sklearn.externals import joblib
+from sklearn.decomposition import PCA
+from matplotlib import pyplot as plt
 from fishervector import FisherVectorGMM
 
 from configurations import n_features, vocab_size, gaussion_components, batch_size
@@ -17,6 +19,7 @@ sift = cv2.xfeatures2d.SIFT_create(nfeatures=n_features)
 matcher = cv2.FlannBasedMatcher(dict(algorithm=1, trees=5), {})
 bow_extract = cv2.BOWImgDescriptorExtractor(sift, matcher)
 fishervector_gmm = None
+pca = None
 
 
 def dummy_feature_extractor(images):
@@ -48,6 +51,13 @@ def bovw_extractor(images):
     bovws = bovws.reshape(bovws.shape[0], bovws.shape[2])
 
     return bovws
+
+def bovw_visualizer(image,index:str):
+    x = np.arange(len(image))
+    plt.bar(x,image)
+    plt.xticks(x, x)
+    plt.savefig(index)
+    plt.close()
 
 
 def prepare_bovw_vocabulary(X_train: np.array, vocs_folder: str, iter_name: str):
@@ -98,9 +108,11 @@ def hog_extractor(images):
     return hogs
 
 
-def initilize_fishervector_gmm(fv_gmm):
+def initilize_fishervector(fv_gmm,pca_model):
     global fishervector_gmm
+    global pca
     fishervector_gmm = fv_gmm
+    pca = pca_model
 
 
 def chunks(l, n: int):
@@ -120,10 +132,15 @@ def fishervector_extractor(images: ndarray) -> ndarray:
             desc = desc[:n_features]
             training_features[idx] = desc
 
-    fishervectors: ndarray = np.empty((images.shape[0], 2 * gaussion_components, 128))  # (n_images, 2*n_kernels, n_feature_dim)
+    fishervectors: ndarray = np.empty((images.shape[0], 2 * gaussion_components, 64))  # (n_images, 2*n_kernels, n_feature_dim)
     current_idx: int = 0
     for batch in chunks(training_features, batch_size):  # doing this in batches as doing it in one shot creates big memory problems
         current_size = batch.shape[0]
+        # Apply pca
+        flattened_batch = batch.reshape(-1,128)
+        flattened_batch = pca.transform(flattened_batch)
+        batch = flattened_batch.reshape(-1,n_features,64)
+
         fishervectors[current_idx:current_idx + current_size] = fishervector_gmm.predict(batch)  # type: ignore
         current_idx += current_size
 
@@ -134,7 +151,7 @@ def fishervector_extractor(images: ndarray) -> ndarray:
 
 
 def prepare_fishervector_gmm(X_train, features_folder, iter_name):
-    if not os.path.exists(os.path.join(features_folder, 'fisherkernel_{}'.format(iter_name))):
+    if not os.path.exists(os.path.join(features_folder, 'fisherkernel_{}'.format(iter_name))) or not os.path.exists(os.path.join(features_folder, 'pca_{}'.format(iter_name))):
         # Fill bow with sift calculations
         print('Calculating Sift Features for training images')
         images_with_problems = 0
@@ -159,15 +176,25 @@ def prepare_fishervector_gmm(X_train, features_folder, iter_name):
         # Obviously makes it impossible to predict that image, so we want to choose a n_features count for sift that minimizes this error, while still giving good results.
         print('Errors occurred for {} images'.format(images_with_problems))
 
+        # Apply dimensionality reduction to fisher vector to bring descriptor size from 128 to 64
+        flattened_features = training_features.reshape(-1,128)
+        pca_model = PCA(n_components=64)
+        pca_model.fit(flattened_features)
+        flattened_features = pca_model.transform(flattened_features)
+        training_features = flattened_features.reshape(-1, n_features, 64)
+
+
         print('Calculating Fisher Kernel for training images')
         fishervector_gmm: FisherVectorGMM = FisherVectorGMM(n_kernels=gaussion_components).fit(training_features)
 
         joblib.dump(fishervector_gmm, os.path.join(features_folder, 'fisherkernel_{}'.format(iter_name)))
+        joblib.dump(pca_model,os.path.join(features_folder, 'pca_{}'.format(iter_name)))
 
     else:
         print('Loaded Fisher Kernel')
         fishervector_gmm = joblib.load(os.path.join(features_folder, 'fisherkernel_{}'.format(iter_name)))
-    initilize_fishervector_gmm(fishervector_gmm)
+        pca_model = joblib.load(os.path.join(features_folder, 'pca_{}'.format(iter_name)))
+    initilize_fishervector(fishervector_gmm,pca_model)
 
 
 def get_feature_extractor(extractor_name: str):
