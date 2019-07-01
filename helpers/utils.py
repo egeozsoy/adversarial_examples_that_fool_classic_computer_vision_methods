@@ -1,11 +1,11 @@
-from typing import List, Tuple,Dict
+from typing import List, Tuple, Dict
 import random
 import os
 
 import numpy as np
 from sklearn.utils import shuffle
 
-from configurations import save_correct_predictions, correct_predictions_file, use_classes, adversarial_test_size,max_queries
+from configurations import save_correct_predictions, correct_predictions_file, use_classes, adversarial_test_size, max_queries
 
 
 def gpu_available():
@@ -15,6 +15,7 @@ def gpu_available():
         if x.device_type == 'GPU':
             return True
     return False
+
 
 # delete classes that are not in keep_classes, simplify cifar-10
 def filter_classes(X: np.ndarray, y: np.ndarray, keep_classes: List[int]) -> Tuple[np.ndarray, np.ndarray]:
@@ -61,9 +62,9 @@ def get_balanced_batch(x: np.ndarray, y: np.ndarray, batch_size: int, classes: L
 def equally_distributed_indices(correct_indices, y: np.ndarray):
     needed_sample_per_class = adversarial_test_size // len(use_classes)  # make sure it is divideble
 
-    group_by_class:Dict[int,List[int]] = {}
+    group_by_class: Dict[int, List[int]] = {}
 
-    final_indices:List[int] = []
+    final_indices: List[int] = []
 
     for correct_idx in correct_indices:
         element = y[correct_idx]
@@ -129,7 +130,7 @@ def generate_graph_data(folder_name: str, max_queries: int):
 
     if graphs is None:
         return
-    mean_graph = np.median(graphs,axis=0)
+    mean_graph = np.median(graphs, axis=0)
     np.save(os.path.join(folder_name, 'mean_graph.npy'), mean_graph)
 
     plt.plot(mean_graph)
@@ -140,7 +141,8 @@ def generate_graph_data(folder_name: str, max_queries: int):
 
     return mean_graph
 
-def create_folders(folder_names:List[str]):
+
+def create_folders(folder_names: List[str]):
     for folder_name in folder_names:
         if not os.path.exists(folder_name):
             os.mkdir(folder_name)
@@ -150,7 +152,38 @@ if __name__ == '__main__':
     from matplotlib import pyplot as plt
     import matplotlib.ticker as plticker
 
-    filtering_keywords = ['inria','_untargeted']
+    filtering_keywords = ['imagenette', '_targeted']
+
+    colors = {'imagenette_forest_fishervector_extractor_targeted': 'red',
+              'imagenette_forest_hog_extractor_targeted': 'springgreen',
+              'imagenette_logreg_bovw_extractor_targeted': 'peru',
+              'imagenette_logreg_hog_extractor_untargeted': 'azure',
+              'imagenette_logreg_fishervector_extractor_untargeted': 'beige',
+              'inria_logreg_bovw_extractor_untargeted': 'bisque',
+              'inria_svc_hog_extractor_untargeted': 'black',
+              'inria_cnn__untargeted': 'blanchedalmond',
+              'inria_logreg_fishervector_extractor_untargeted': 'blue',
+              'imagenette_svc_hog_extractor_targeted': 'blueviolet',
+              'imagenette_forest_bovw_extractor_untargeted': 'brown',
+              'imagenette_svc_fishervector_extractor_untargeted': 'burlywood',
+              'inria_forest_hog_extractor_untargeted': 'cadetblue',
+              'imagenette_svc_fishervector_extractor_targeted': 'chartreuse',
+              'imagenette_svc_bovw_extractor_targeted': 'chocolate',
+              'imagenette_forest_fishervector_extractor_untargeted': 'coral',
+              'inria_forest_fishervector_extractor_untargeted': 'cornflowerblue',
+              'imagenette_logreg_hog_extractor_targeted': 'cornsilk',
+              'inria_logreg_hog_extractor_untargeted': 'crimson',
+              'imagenette_logreg_fishervector_extractor_targeted': 'cyan',
+              'inria_svc_fishervector_extractor_untargeted': 'darkblue',
+              'imagenette_logreg_bovw_extractor_untargeted': 'darkcyan',
+              'imagenette_cnn__untargeted': 'darkgoldenrod',
+              'imagenette_cnn__targeted': 'darkgray',
+              'imagenette_forest_bovw_extractor_targeted': 'darkgreen',
+              'imagenette_svc_bovw_extractor_untargeted': 'darkkhaki',
+              'inria_svc_bovw_extractor_untargeted': 'darkmagenta',
+              'inria_forest_bovw_extractor_untargeted': 'darkolivegreen',
+              'imagenette_svc_hog_extractor_untargeted': 'darkorange',
+              'imagenette_forest_hog_extractor_untargeted': 'darkorchid'}
 
     legends = []
     mean_graphs = []
@@ -172,8 +205,9 @@ if __name__ == '__main__':
         mean_graphs.append(generate_graph_data(folder_path, max_queries))
 
     fig, ax = plt.subplots()
-    for mean_graph in mean_graphs:
-        ax.plot(mean_graph, linewidth=1.0)
+    for idx, mean_graph in enumerate(mean_graphs):
+        color = colors[legends[idx]]
+        ax.plot(mean_graph,color, linewidth=1.0)
 
     loc_major = plticker.MultipleLocator(base=0.005)  # locator puts ticks at regular intervals
     ax.yaxis.set_major_locator(loc_major)

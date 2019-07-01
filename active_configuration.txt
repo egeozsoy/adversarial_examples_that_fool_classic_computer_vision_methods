@@ -1,1 +1,1 @@
-svm_imagenette_fisher-untargeted
+cnn_inria-untargeted
