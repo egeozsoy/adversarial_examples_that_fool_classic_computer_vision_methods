@@ -161,16 +161,18 @@ def generate_graph_data(folder_name: str, max_queries: int):
 
     if graphs is None:
         return
-    mean_graph = np.median(graphs, axis=0)
+    median_graph = np.median(graphs, axis=0)
+    mean_graph = np.mean(graphs,axis=0)
     np.save(os.path.join(folder_name, 'mean_graph.npy'), mean_graph)
-
-    plt.plot(mean_graph)
+    with open(os.path.join(folder_name,'mean_median.txt'),'w') as f:
+        f.write('Median: {} ; Mean: {}'.format(median_graph[-1],mean_graph[-1]))
+    plt.plot(median_graph)
     plt.ylabel("mean of thresholds")
     plt.xlabel("queries")
     plt.savefig(os.path.join(folder_name, 'graph'))
     plt.close()
 
-    return mean_graph
+    return median_graph
 
 
 def create_folders(folder_names: List[str]):
@@ -269,8 +271,8 @@ if __name__ == '__main__':
             mean_graphs.append(generate_graph_data(folder_path, max_queries))
 
         fig, ax = plt.subplots()
-        for idx, mean_graph in enumerate(mean_graphs):
-            ax.plot(mean_graph, linewidth=1.0)
+        for idx, graph in enumerate(mean_graphs):
+            ax.plot(graph, linewidth=1.0)
 
         loc_major = plticker.MultipleLocator(base=0.005)  # locator puts ticks at regular intervals
         ax.yaxis.set_major_locator(loc_major)
