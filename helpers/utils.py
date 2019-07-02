@@ -7,6 +7,37 @@ from sklearn.utils import shuffle
 
 from configurations import save_correct_predictions, correct_predictions_file, use_classes, adversarial_test_size, max_queries
 
+# Not used any more
+deprecated_colors = {'imagenette_forest_fishervector_extractor_targeted': '#200000',
+              'imagenette_forest_hog_extractor_targeted': '#600000',
+              'imagenette_logreg_bovw_extractor_targeted': '#800000',
+              'imagenette_logreg_hog_extractor_untargeted': '#a00000',
+              'imagenette_logreg_fishervector_extractor_untargeted': '#c00000',
+              'inria_logreg_bovw_extractor_untargeted': '#e00000',
+              'inria_svc_hog_extractor_untargeted': '#201400',
+              'inria_cnn__untargeted': '#402900',
+              'inria_logreg_fishervector_extractor_untargeted': '#e03d00',
+              'imagenette_svc_hog_extractor_targeted': '#805100',
+              'imagenette_forest_bovw_extractor_untargeted': '#a06600',
+              'imagenette_svc_fishervector_extractor_untargeted': '#c07a00',
+              'inria_forest_hog_extractor_untargeted': '#e08f01',
+              'imagenette_svc_fishervector_extractor_targeted': '#206700',
+              'imagenette_svc_bovw_extractor_targeted': '#309c00',
+              'imagenette_forest_fishervector_extractor_untargeted': '#3dc601',
+              'inria_forest_fishervector_extractor_untargeted': '#004032',
+              'imagenette_logreg_hog_extractor_targeted': '#00604b',
+              'inria_logreg_hog_extractor_untargeted': '#008265',
+              'imagenette_logreg_fishervector_extractor_targeted': '#00a17d',
+              'inria_svc_fishervector_extractor_untargeted': '#00cea0',
+              'imagenette_logreg_bovw_extractor_untargeted': '#00e0ae',
+              'imagenette_cnn__untargeted': '#002036',
+              'imagenette_cnn__targeted': '#00406d',
+              'imagenette_forest_bovw_extractor_targeted': '#0060a3',
+              'imagenette_svc_bovw_extractor_untargeted': '#0080d9',
+              'inria_svc_bovw_extractor_untargeted': '#0c0046',
+              'inria_forest_bovw_extractor_untargeted': '#160083',
+              'imagenette_svc_hog_extractor_untargeted': '#1e00b7',
+              'imagenette_forest_hog_extractor_untargeted': '#d600b0'}
 
 def gpu_available():
     from tensorflow.python.client import device_lib
@@ -147,73 +178,90 @@ def create_folders(folder_names: List[str]):
         if not os.path.exists(folder_name):
             os.mkdir(folder_name)
 
+def filter_graphs(folder_names):
+    filtered = []
+
+    for folder_name in folder_names:
+        if dataset_name not in folder_name:
+            # Skip these
+            continue
+        if target_mode not in folder_name:
+            # Skip these
+            continue
+        # if all, don't filter out based on model_type
+        if 'ALL' not in model_types:
+            model_type_found = False
+            for model_type in model_types:
+                if model_type in folder_name:
+                    model_type_found = True
+                    break
+
+            # Skip if folder doesn't include model type
+            if not model_type_found:
+                continue
+
+        # if all, don't filter out based on model_type
+        if 'ALL' not in feature_extractor_types:
+            feature_extractor_found = False
+            for feature_extractor_type in feature_extractor_types:
+                if feature_extractor_type in folder_name:
+                    feature_extractor_found = True
+                    break
+
+            # Skip if folder doesn't include model type
+            if not feature_extractor_found:
+                continue
+
+        # Add those which make it this far to the filtered list
+        filtered.append(folder_name)
+
+    return filtered
 
 if __name__ == '__main__':
     from matplotlib import pyplot as plt
     import matplotlib.ticker as plticker
 
-    filtering_keywords = ['imagenette', '_targeted']
+    graphs_to_export = [
+        ('inria','_untargeted',['ALL'],['ALL']),
+        ('inria', '_untargeted', ['ALL'], ['bovw','cnn']),
+        ('inria', '_untargeted', ['ALL'], ['hog', 'cnn']),
+        ('inria', '_untargeted', ['ALL'], ['fishervector', 'cnn']),
+        ('inria', '_untargeted', ['logreg','cnn'], ['ALL']),
+        ('inria', '_untargeted', ['forest', 'cnn'], ['ALL']),
+        ('inria', '_untargeted', ['svc', 'cnn'], ['ALL']),
 
-    colors = {'imagenette_forest_fishervector_extractor_targeted': 'red',
-              'imagenette_forest_hog_extractor_targeted': 'springgreen',
-              'imagenette_logreg_bovw_extractor_targeted': 'peru',
-              'imagenette_logreg_hog_extractor_untargeted': 'azure',
-              'imagenette_logreg_fishervector_extractor_untargeted': 'beige',
-              'inria_logreg_bovw_extractor_untargeted': 'bisque',
-              'inria_svc_hog_extractor_untargeted': 'black',
-              'inria_cnn__untargeted': 'blanchedalmond',
-              'inria_logreg_fishervector_extractor_untargeted': 'blue',
-              'imagenette_svc_hog_extractor_targeted': 'blueviolet',
-              'imagenette_forest_bovw_extractor_untargeted': 'brown',
-              'imagenette_svc_fishervector_extractor_untargeted': 'burlywood',
-              'inria_forest_hog_extractor_untargeted': 'cadetblue',
-              'imagenette_svc_fishervector_extractor_targeted': 'chartreuse',
-              'imagenette_svc_bovw_extractor_targeted': 'chocolate',
-              'imagenette_forest_fishervector_extractor_untargeted': 'coral',
-              'inria_forest_fishervector_extractor_untargeted': 'cornflowerblue',
-              'imagenette_logreg_hog_extractor_targeted': 'cornsilk',
-              'inria_logreg_hog_extractor_untargeted': 'crimson',
-              'imagenette_logreg_fishervector_extractor_targeted': 'cyan',
-              'inria_svc_fishervector_extractor_untargeted': 'darkblue',
-              'imagenette_logreg_bovw_extractor_untargeted': 'darkcyan',
-              'imagenette_cnn__untargeted': 'darkgoldenrod',
-              'imagenette_cnn__targeted': 'darkgray',
-              'imagenette_forest_bovw_extractor_targeted': 'darkgreen',
-              'imagenette_svc_bovw_extractor_untargeted': 'darkkhaki',
-              'inria_svc_bovw_extractor_untargeted': 'darkmagenta',
-              'inria_forest_bovw_extractor_untargeted': 'darkolivegreen',
-              'imagenette_svc_hog_extractor_untargeted': 'darkorange',
-              'imagenette_forest_hog_extractor_untargeted': 'darkorchid'}
+    ]
 
-    legends = []
-    mean_graphs = []
-    for folder in os.listdir('evaluations'):
-        # skip folder based on filtering keywords
-        skip_folder = False
-        for keyword in filtering_keywords:
-            if keyword not in folder:
-                skip_folder = True
-                break
+    # dataset_name = 'imagenette'
+    # target_mode = '_untargeted'
+    # model_types = ['ALL']
+    # feature_extractor_types = ['ALL']
 
-        if skip_folder:
-            continue
-        folder_path = os.path.join('evaluations', folder)
-        if not os.path.isdir(folder_path):
-            continue
+    for graph_to_export in graphs_to_export:
+        dataset_name,target_mode,model_types,feature_extractor_types = graph_to_export
 
-        legends.append(folder)
-        mean_graphs.append(generate_graph_data(folder_path, max_queries))
 
-    fig, ax = plt.subplots()
-    for idx, mean_graph in enumerate(mean_graphs):
-        color = colors[legends[idx]]
-        ax.plot(mean_graph,color, linewidth=1.0)
+        legends = []
+        mean_graphs = []
+        filtered_folders = filter_graphs(os.listdir('evaluations'))
 
-    loc_major = plticker.MultipleLocator(base=0.005)  # locator puts ticks at regular intervals
-    ax.yaxis.set_major_locator(loc_major)
-    loc_minor = plticker.MultipleLocator(base=0.0025)
-    ax.yaxis.set_minor_locator(loc_minor)
+        for folder in filtered_folders:
+            folder_path = os.path.join('evaluations', folder)
+            if not os.path.isdir(folder_path):
+                continue
 
-    plt.legend(legends)
-    ax.grid(which='both', alpha=0.3)
-    plt.savefig('all_graphs_{}'.format(', '.join(filtering_keywords)))
+            legends.append(folder)
+            mean_graphs.append(generate_graph_data(folder_path, max_queries))
+
+        fig, ax = plt.subplots()
+        for idx, mean_graph in enumerate(mean_graphs):
+            ax.plot(mean_graph, linewidth=1.0)
+
+        loc_major = plticker.MultipleLocator(base=0.005)  # locator puts ticks at regular intervals
+        ax.yaxis.set_major_locator(loc_major)
+        loc_minor = plticker.MultipleLocator(base=0.0025)
+        ax.yaxis.set_minor_locator(loc_minor)
+
+        plt.legend(legends,fontsize = 'x-small')
+        ax.grid(which='both', alpha=0.3)
+        plt.savefig('all_graphs_{}_{}_models_{}_extractors_{}'.format(dataset_name,target_mode,model_types,feature_extractor_types),dpi=300)
