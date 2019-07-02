@@ -218,6 +218,7 @@ def filter_graphs(folder_names):
     return filtered
 
 if __name__ == '__main__':
+    #TODO CREATE TABLE WITH HOW MUCH BETTER IT IS COMPARED TO CNN
     from matplotlib import pyplot as plt
     import matplotlib.ticker as plticker
 
@@ -229,6 +230,20 @@ if __name__ == '__main__':
         ('inria', '_untargeted', ['logreg','cnn'], ['ALL']),
         ('inria', '_untargeted', ['forest', 'cnn'], ['ALL']),
         ('inria', '_untargeted', ['svc', 'cnn'], ['ALL']),
+        ('imagenette', '_untargeted', ['ALL'], ['ALL']),
+        ('imagenette', '_untargeted', ['ALL'], ['bovw', 'cnn']),
+        ('imagenette', '_untargeted', ['ALL'], ['hog', 'cnn']),
+        ('imagenette', '_untargeted', ['ALL'], ['fishervector', 'cnn']),
+        ('imagenette', '_untargeted', ['logreg', 'cnn'], ['ALL']),
+        ('imagenette', '_untargeted', ['forest', 'cnn'], ['ALL']),
+        ('imagenette', '_untargeted', ['svc', 'cnn'], ['ALL']),
+        ('imagenette', '_targeted', ['ALL'], ['ALL']),
+        ('imagenette', '_targeted', ['ALL'], ['bovw', 'cnn']),
+        ('imagenette', '_targeted', ['ALL'], ['hog', 'cnn']),
+        ('imagenette', '_targeted', ['ALL'], ['fishervector', 'cnn']),
+        ('imagenette', '_targeted', ['logreg', 'cnn'], ['ALL']),
+        ('imagenette', '_targeted', ['forest', 'cnn'], ['ALL']),
+        ('imagenette', '_targeted', ['svc', 'cnn'], ['ALL']),
 
     ]
 
@@ -264,4 +279,4 @@ if __name__ == '__main__':
 
         plt.legend(legends,fontsize = 'x-small')
         ax.grid(which='both', alpha=0.3)
-        plt.savefig('all_graphs_{}_{}_models_{}_extractors_{}'.format(dataset_name,target_mode,model_types,feature_extractor_types),dpi=300)
+        plt.savefig('all_graphs_{}_{}_models_{}_extractors_{}'.format(dataset_name,target_mode,model_types[0],feature_extractor_types[0]),dpi=300)
