@@ -249,11 +249,6 @@ if __name__ == '__main__':
 
     ]
 
-    # dataset_name = 'imagenette'
-    # target_mode = '_untargeted'
-    # model_types = ['ALL']
-    # feature_extractor_types = ['ALL']
-
     for graph_to_export in graphs_to_export:
         dataset_name,target_mode,model_types,feature_extractor_types = graph_to_export
 
@@ -272,7 +267,11 @@ if __name__ == '__main__':
 
         fig, ax = plt.subplots()
         for idx, graph in enumerate(mean_graphs):
-            ax.plot(graph, linewidth=1.0)
+            # Make sure cnn always has the same color
+            if 'cnn' in legends[idx]:
+                ax.plot(graph, 'r',linewidth=1.0)
+            else:
+                ax.plot(graph, linewidth=1.0)
 
         loc_major = plticker.MultipleLocator(base=0.005)  # locator puts ticks at regular intervals
         ax.yaxis.set_major_locator(loc_major)
