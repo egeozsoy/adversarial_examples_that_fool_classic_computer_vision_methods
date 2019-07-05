@@ -166,13 +166,13 @@ def generate_graph_data(folder_name: str, max_queries: int):
     np.save(os.path.join(folder_name, 'mean_graph.npy'), mean_graph)
     with open(os.path.join(folder_name,'mean_median.txt'),'w') as f:
         f.write('Median: {} ; Mean: {}'.format(median_graph[-1],mean_graph[-1]))
-    plt.plot(median_graph)
+    plt.plot(mean_graph)
     plt.ylabel("mean of thresholds")
     plt.xlabel("queries")
     plt.savefig(os.path.join(folder_name, 'graph'))
     plt.close()
 
-    return median_graph
+    return mean_graph
 
 
 def create_folders(folder_names: List[str]):
@@ -257,12 +257,32 @@ if __name__ == '__main__':
         mean_graphs = []
         filtered_folders = filter_graphs(os.listdir('evaluations'))
 
-        for folder in filtered_folders:
+        for folder in sorted(filtered_folders):
             folder_path = os.path.join('evaluations', folder)
             if not os.path.isdir(folder_path):
                 continue
 
-            legends.append(folder)
+            splitted_folder_name = folder.split('_')
+            if len(splitted_folder_name) == 4: # then cnn folder
+                legend = 'CNN'
+            else:
+                _, model_name, extractor_name, _, _ = splitted_folder_name
+
+                if model_name == 'logreg':
+                    model_name = 'Logistic Regression'
+                elif model_name == 'svc':
+                    model_name = 'Support Vector Machine'
+                elif model_name == 'forest':
+                    model_name = 'Random Forest'
+
+                if extractor_name == 'bovw' or extractor_name == 'hog':
+                    extractor_name = extractor_name.upper()
+                else:
+                    extractor_name = extractor_name.title()
+
+                legend = '{} - {}'.format(model_name,extractor_name)
+
+            legends.append(legend) # remove Targeted or untargeted label
             mean_graphs.append(generate_graph_data(folder_path, max_queries))
 
         fig, ax = plt.subplots()
@@ -278,6 +298,8 @@ if __name__ == '__main__':
         loc_minor = plticker.MultipleLocator(base=0.0025)
         ax.yaxis.set_minor_locator(loc_minor)
 
-        plt.legend(legends,fontsize = 'x-small')
+        plt.legend(legends,fontsize = 'small')
+        plt.xlabel('Number of Queries')
+        plt.ylabel('Mean Perturbation')
         ax.grid(which='both', alpha=0.3)
         plt.savefig('all_graphs_{}_{}_models_{}_extractors_{}'.format(dataset_name,target_mode,model_types[0],feature_extractor_types[0]),dpi=300)

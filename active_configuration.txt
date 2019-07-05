@@ -1,1 +1,1 @@
-cnn_inria-untargeted
+cnn_imagenette-untargeted
