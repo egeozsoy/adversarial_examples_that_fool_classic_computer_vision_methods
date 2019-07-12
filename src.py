@@ -85,7 +85,7 @@ def attack_image(idx, test_idx):
         save_name = os.path.join(adversarial_images_config_folder, '{}_{}'.format(evaluation_config_str, idx))
         if adversarial is not None:
             plot_result(np.float32(cv2.cvtColor(np.uint8(test_image), cv2.COLOR_RGB2BGR)),
-                        np.float32(cv2.cvtColor(np.uint8(adversarial), cv2.COLOR_RGB2BGR)), save_name)
+                        np.float32(cv2.cvtColor(np.uint8(adversarial), cv2.COLOR_RGB2BGR)),save_name,reference_image=np.float32(cv2.cvtColor(np.uint8(reference_image), cv2.COLOR_RGB2BGR)))
 
         os.rename('attack_{}_{}.csv'.format(evaluation_config_str, idx), os.path.join(evaluation_config_folder, '{}_{}.csv'.format(idx, test_idx)))
 

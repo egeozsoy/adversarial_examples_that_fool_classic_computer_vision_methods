@@ -8,6 +8,8 @@ models/*
 *.png
 .mypy_cache/*
 evaluations/*
+evaluations_5/*
 starting_commands/*
 *.csv
 adversarial_images/*
+adversarial_images_5/*

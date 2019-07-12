@@ -298,8 +298,8 @@ if __name__ == '__main__':
         loc_minor = plticker.MultipleLocator(base=0.0025)
         ax.yaxis.set_minor_locator(loc_minor)
 
-        plt.legend(legends,fontsize = 'small')
-        plt.xlabel('Number of Queries')
-        plt.ylabel('Mean Perturbation')
+        plt.legend(legends,fontsize = 'medium')
+        plt.xlabel('Number of Queries',fontdict={'size':12})
+        plt.ylabel('Mean Perturbation',fontdict={'size':12})
         ax.grid(which='both', alpha=0.3)
         plt.savefig('all_graphs_{}_{}_models_{}_extractors_{}'.format(dataset_name,target_mode,model_types[0],feature_extractor_types[0]),dpi=300)

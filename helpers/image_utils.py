@@ -3,35 +3,58 @@ import numpy as np
 from configurations import dataset_name,model_name,feature_extractor_name,targeted_attack
 
 
-def plot_result(image, adversarial,save_name):
+def plot_result(image, adversarial,save_name,reference_image=None):
     import matplotlib.pyplot as plt
     image = image / 255
     adversarial = adversarial / 255
 
     plt.figure()
 
-    plt.subplot(1, 3, 1)
-    plt.title('Original')
-    plt.imshow(image)  # division by 255 to convert [0, 255] to [0, 1]
-    plt.axis('off')
+    if reference_image is not None:
+        reference_image = reference_image / 255
+        plt.subplot(1, 4, 1)
+        plt.title('Starting Image')
+        plt.imshow(reference_image)  # division by 255 to convert [0, 255] to [0, 1]
+        plt.axis('off')
 
-    plt.subplot(1, 3, 2)
-    plt.title('Adversarial')
-    plt.imshow(adversarial)  # ::-1 to convert BGR to RGB
-    plt.axis('off')
+        plt.subplot(1, 4, 2)
+        plt.title('Original')
+        plt.imshow(image)  # division by 255 to convert [0, 255] to [0, 1]
+        plt.axis('off')
 
-    plt.subplot(1, 3, 3)
-    plt.title('Difference')
-    difference = adversarial - image
-    plt.imshow(difference / abs(difference).max() * 0.2 + 0.5)
-    plt.axis('off')
+        plt.subplot(1, 4, 3)
+        plt.title('Adversarial')
+        plt.imshow(adversarial)  # ::-1 to convert BGR to RGB
+        plt.axis('off')
+
+        plt.subplot(1, 4, 4)
+        plt.title('Difference')
+        difference = adversarial - image
+        plt.imshow(difference / abs(difference).max() * 0.2 + 0.5)
+        plt.axis('off')
+
+    else:
+
+        plt.subplot(1, 3, 1)
+        plt.title('Original')
+        plt.imshow(image)  # division by 255 to convert [0, 255] to [0, 1]
+        plt.axis('off')
+
+        plt.subplot(1, 3, 2)
+        plt.title('Adversarial')
+        plt.imshow(adversarial)  # ::-1 to convert BGR to RGB
+        plt.axis('off')
+
+        plt.subplot(1, 3, 3)
+        plt.title('Difference')
+        difference = adversarial - image
+        plt.imshow(difference / abs(difference).max() * 0.2 + 0.5)
+        plt.axis('off')
 
     targeted_str: str = 'targeted' if targeted_attack else 'untargeted'
     plt.savefig(save_name)
 
     plt.close()
-
-    # plt.show()
 
 
 def revert_normalization(image, means, stds):
