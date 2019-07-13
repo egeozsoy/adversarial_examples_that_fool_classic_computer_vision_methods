@@ -1,1 +1,1 @@
-svm_inria_hog-untargeted
+cnn_imagenette-targeted
