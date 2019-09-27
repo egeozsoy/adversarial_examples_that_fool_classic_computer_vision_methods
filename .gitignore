@@ -13,3 +13,5 @@ starting_commands/*
 *.csv
 adversarial_images/*
 adversarial_images_5/*
+/features.zip
+__pycache__/*
